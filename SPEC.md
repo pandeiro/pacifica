@@ -68,3 +68,90 @@ This voice profile should guide LLM prompts, template text, and any editorial co
 - Malibu area
 - Leo Carrillo
 - Laguna Beach (Heisler Park)
+
+## Architecture
+
+### Overview
+
+Pacific uses a multi-container architecture deployed via Docker Compose on a single VPS.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                        nginx                            │
+│              (reverse proxy + static)                    │
+│         pacific.yourdomain.com :443                      │
+└────────────┬──────────────────────────────┬─────────────┘
+             │                              │
+     ┌───────┴────────┐              ┌──────┴─────────┐
+     │   Frontend     │              │   API Server    │
+     │  (static build) │              │   (Python)      │
+     │  React/Vite/TS  │              │   FastAPI       │
+     └────────────────┘              └────────┬────────┘
+                                            │
+                                    ┌───────┴────────┐
+                                    │   PostgreSQL    │
+                                    │  + TimescaleDB  │
+                                    └───────┬────────┘
+                                            │
+     ┌────────────────┐              ┌───────┴────────┐
+     │  Scraper Worker │────────────┘  Scheduler      │
+     │  (Python)       │              │  (APScheduler)  │
+     │  All scrapers   │              └────────────────┘
+     │  as modules     │
+     └────────────────┘
+```
+
+### Containers
+
+| Container | Role | Tech | Notes |
+|-----------|------|------|-------|
+| **nginx** | Reverse proxy, TLS termination, static file serving | nginx + Let's Encrypt | Serves frontend build, proxies /api to API server |
+| **frontend** | Build-only container (or served directly by nginx) | React, Vite, TypeScript, D3 | Static build output mounted into nginx |
+| **api** | REST + WebSocket API for the dashboard | Python, FastAPI | Serves data to frontend, WebSocket for live tile updates |
+| **scraper** | Data collection worker | Python, BeautifulSoup/httpx, APScheduler | Runs all scrapers on configurable schedules, writes to Postgres |
+| **postgres** | Primary data store | PostgreSQL 16 + TimescaleDB | Time-series hypertables for sightings, conditions, tides |
+
+### Infrastructure
+
+- **Host**: Hetzner VPS - 2 vCPU, 4GB RAM, 80GB SSD
+- **Domain**: `pacific.yourdomain.com` (subdomain on existing domain)
+- **TLS**: Let's Encrypt via certbot or nginx companion
+- **Deployment**: Docker Compose, deployed via GitLab CI/CD
+- **OS**: Linux (whatever is currently on the Hetzner box)
+
+### Resource Budget (4GB RAM)
+
+| Component | Estimated RAM |
+|-----------|---------------|
+| PostgreSQL + TimescaleDB | ~500MB-1GB |
+| API Server (FastAPI) | ~100-200MB |
+| Scraper Worker | ~200-400MB (spikes during scraping) |
+| nginx | ~50MB |
+| OS + overhead | ~500MB |
+| **Headroom** | **~1.5-2GB** |
+
+This leaves room for growth but not for heavy additions like Supabase. The local LLM service (separate project) will need its own resource planning.
+
+### Network Topology
+
+Other Docker Compose projects on the same host (Twitter API proxy, future LLM service) can communicate with Pacific's containers via:
+- A shared Docker network (preferred - create an external network both compose files join)
+- Host networking / published ports as fallback
+
+The shared network approach keeps things clean and avoids port conflicts.
+
+### Tech Stack Summary
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18+, Vite, TypeScript, D3.js |
+| UI Components | Custom tiles (each tile can use its own rendering approach) |
+| Maps | Leaflet or Mapbox GL JS (free tier) with Google Maps API for drive times only |
+| API | Python, FastAPI, WebSockets |
+| Scraping | Python, httpx, BeautifulSoup4, possibly Playwright for JS-rendered pages |
+| Scheduling | APScheduler (in-process with scraper worker) |
+| Database | PostgreSQL 16 + TimescaleDB |
+| Reverse Proxy | nginx |
+| Containerization | Docker, Docker Compose |
+| CI/CD | GitLab CI/CD |
+| Monitoring | Health check endpoints + Telegram notifications |
