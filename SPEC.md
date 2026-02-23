@@ -457,3 +457,185 @@ Tiles have a fixed default layout (no drag-and-drop for MVP) but any tile can be
 - **Maximize**: Any tile can be maximized to fill the viewport. Press Escape or click a close button to restore.
 - **Loading states**: Each tile manages its own loading/error state independently.
 - **Mobile**: Tiles stack vertically in a single column. Map tile becomes a standard (non-rotated) map at the top.
+
+## CI/CD
+
+### Pipeline Design
+
+The GitLab CI/CD pipeline runs on every push to `main`. The goal is **commit-to-live in under 5 minutes** with automatic rollback if something breaks.
+
+```
+push to main
+    │
+    ├── [stage: lint]     frontend lint + backend lint (parallel)
+    ├── [stage: test]     frontend tests + backend tests (parallel)
+    ├── [stage: build]    docker build for each changed service
+    ├── [stage: deploy]   docker compose pull + up on VPS via SSH
+    ├── [stage: verify]   health checks against live site
+    │       │
+    │       ├── PASS → ✅ Telegram: "Deploy successful"
+    │       └── FAIL → auto-rollback to previous images
+    │                    → 🚨 Telegram: "Deploy FAILED, rolled back"
+    └── done
+```
+
+### Pipeline Stages
+
+#### Lint
+- **Frontend**: ESLint + TypeScript type checking
+- **Backend**: Ruff (Python linter/formatter) + mypy (type checking)
+- Run in parallel, fail fast
+
+#### Test
+- **Frontend**: Vitest for unit/component tests
+- **Backend**: pytest for scraper tests (with recorded HTTP fixtures), API endpoint tests, data model tests
+- Run in parallel
+
+#### Build
+- Build Docker images for services that changed (detect via git diff)
+- Tag images with commit SHA and `latest`
+- Push to GitLab Container Registry (built into the project, free)
+
+#### Deploy
+- SSH into Hetzner VPS
+- Pull new images from GitLab Container Registry
+- `docker compose up -d` with the new images
+- Wait for containers to report healthy
+
+#### Verify (Post-Deploy Health Checks)
+- Hit `/api/health` endpoint - checks API server + database connectivity
+- Hit `/api/health/scrapers` - checks that scrapers have run recently (no stale data)
+- Verify frontend loads (HTTP 200 on root)
+- If any check fails: rollback to previous image tags, notify via Telegram
+
+### Rollback Strategy
+
+- Every successful deploy tags images as `stable` in addition to the commit SHA
+- Rollback = `docker compose` with `stable` tagged images
+- Rollback is automatic on health check failure, but can also be triggered manually
+- The last 5 image versions are retained in the registry for manual rollback
+
+### Branch Strategy
+
+- **`main`**: production branch, auto-deploys on push
+- **Feature branches**: used for development, CI runs lint + test but does NOT deploy
+- **Merge requests**: required for feature branches into main (enforced by workflow, not branch protection for now)
+
+### GitLab CI Configuration
+
+The `.gitlab-ci.yml` will use:
+- **GitLab Container Registry** for Docker images
+- **SSH deployment** via CI/CD variables (SSH key stored as protected variable)
+- **Docker-in-Docker** or **Kaniko** for building images in CI
+- **Environment tracking** in GitLab for deployment history
+
+## Health Checks
+
+### Endpoint: `GET /api/health`
+
+Returns overall system health:
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-02-23T10:30:00Z",
+  "components": {
+    "database": { "status": "healthy", "latency_ms": 3 },
+    "api": { "status": "healthy", "uptime_seconds": 86400 }
+  }
+}
+```
+
+### Endpoint: `GET /api/health/scrapers`
+
+Returns scraper freshness:
+
+```json
+{
+  "status": "healthy",
+  "scrapers": {
+    "noaa_tides": { "last_run": "2025-02-23T06:00:00Z", "status": "success", "stale": false },
+    "south_coast_divers": { "last_run": "2025-02-23T08:15:00Z", "status": "success", "stale": false },
+    "harbor_breeze": { "last_run": "2025-02-22T18:00:00Z", "status": "failure", "stale": true }
+  }
+}
+```
+
+A scraper is "stale" if it hasn't run successfully within 2x its expected schedule interval.
+
+### Ongoing Monitoring
+
+Beyond deploy-time health checks, a lightweight cron job (or the scraper worker itself) periodically:
+- Checks all health endpoints
+- Verifies the frontend is reachable
+- Sends Telegram alert if anything is degraded
+- Frequency: every 5 minutes
+
+## External Dependencies
+
+### APIs (Free)
+
+| API | Used For | Rate Limits | Key Required |
+|-----|----------|-------------|-------------|
+| NOAA CO-OPS | Tides, water temp, currents | Generous, no hard limit | No |
+| iNaturalist | Wildlife sightings | 100 req/min (logged in) | Optional (API token for higher limits) |
+| sunrise-sunset.org | Sun events | 1000 req/day | No |
+| Google Maps Directions | Drive time estimates | 40k requests/month free | Yes (already have key) |
+
+### External Services
+
+| Service | Used For | Notes |
+|---------|----------|-------|
+| Twitter JSON API proxy | Scraping park/wildlife X accounts | Already running on same VPS |
+| YouTube embeds | Live cam feeds | No API needed, just iframe embeds |
+| GitLab Container Registry | Docker image storage | Free with GitLab project |
+| Let's Encrypt | TLS certificates | Free, auto-renewal via certbot |
+
+### Sibling Projects (Separate Repos)
+
+| Project | Purpose | Dependency Type |
+|---------|---------|----------------|
+| **Telegram DevBot** | Notification service accepting webhooks, routing to Telegram | Pacific sends deploy/alert webhooks to it |
+| **Local LLM Service** | Small language model for text extraction from scraped content | Pacific's scraper worker calls it over Docker network for NLP tasks |
+
+Both are optional for MVP - Pacific should function without them, falling back to:
+- Console/log-only notifications if DevBot isn't available
+- Regex/heuristic text extraction if LLM service isn't available
+
+## Configuration
+
+### Environment Variables
+
+```env
+# Database
+DATABASE_URL=postgresql://pacific:password@postgres:5432/pacific
+
+# Google Maps
+GOOGLE_MAPS_API_KEY=...
+
+# Home location (for drive time calculations)
+HOME_LAT=33.XXXX
+HOME_LNG=-118.XXXX
+
+# Telegram DevBot (optional)
+TELEGRAM_WEBHOOK_URL=http://devbot:8080/notify
+
+# Local LLM (optional)
+LLM_SERVICE_URL=http://llm:8000/v1
+
+# Twitter proxy
+TWITTER_PROXY_URL=http://twitter-proxy:8080
+
+# iNaturalist (optional, for higher rate limits)
+INATURALIST_API_TOKEN=...
+```
+
+### Settings Table (DB)
+
+For settings that might change without a redeploy:
+
+```
+id, key, value (jsonb), description, updated_at
+```
+
+Examples: home location override, enabled/disabled scrapers, tile visibility, cam sort order.
