@@ -9,60 +9,91 @@ The project follows a "Configuration as Code" approach, with all secrets and env
 - **`.env.example`**: Maintained in the repo to document all required variables.
 
 ## 2. Docker Architecture
-Orchestrated via `docker-compose.yml`:
+
+**Important**: Nginx runs on the **host machine** (outside Docker). Docker Compose orchestrates only the application services (`api`, `postgres`, `scraper`).
+
+### Production Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                        nginx                            │
-│              (reverse proxy + static)                    │
-│         pacifica.pch.onl :443                            │
-└────────────┬──────────────────────────────┬─────────────┘
-             │                              │
-    ┌────────┴────────┐              ┌──────┴─────────┐
-    │   Frontend      │              │   API Server    │
-    │  (static build) │              │   (Python)      │
-    │  React/Vite/TS  │              │   FastAPI       │
-    └─────────────────┘              └────────┬────────┘
-                                              │
-                                      ┌───────┴────────┐
-                                      │   PostgreSQL    │
-                                      │  + TimescaleDB  │
-                                      └───────┬────────┘
-                                              │
-    ┌────────────────┐              ┌─────────┴────────┐
-    │  Scraper Worker│──────────────┘  Scheduler       │
-    │  (Python)      │              │  (APScheduler)   │
-    │  Direct writes │              └──────────────────┘
-    └────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    nginx (host machine)                         │
+│                    pacifica.pch.onl :443                        │
+│                                                                 │
+│    ┌─────────────────────────────────────────────────────────┐  │
+│    │  Static files    │  api.pch.onl (upstream)              │  │
+│    │  /var/www/pacifica  │  → localhost:3000 (internal only)│  │
+│    │  /prod/           │  ws://api.pch.onl                   │  │
+│    └─────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    Docker (not exposed to public)               │
+│                                                                 │
+│  ┌───────────────┐         ┌──────────────┐                    │
+│  │  API Server   │         │  PostgreSQL  │                    │
+│  │  :3000        │ ◄──────►│  + TimescaleDB│                   │
+│  └───────────────┘         └──────────────┘                    │
+│          │                                                     │
+│  ┌───────┴───────┐                                            │
+│  │  Scraper      │                                             │
+│  │  (direct write)│                                            │
+│  └───────────────┘                                            │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Services
+### Development Architecture
 
-| Service | Role | Database Access | Notes |
-|---------|------|-----------------|-------|
-| **nginx** | Reverse proxy, TLS, static serving | No | Serves frontend, proxies `/api` to API server |
-| **frontend** | Static SPA | No | React app served by nginx |
-| **api** | REST + WebSocket reads | **Read-only** | Serves data to frontend, WebSocket for live updates |
-| **scraper** | Data collection | **Read-write** | Direct writes to DB within Docker network |
-| **postgres** | Primary data store | N/A | PostgreSQL 16 + TimescaleDB |
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Browser                                                        │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  Vite Dev Server  │  API Server (exposed port)            ││
+│  │  localhost:5173    │  localhost:3000                       ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    Docker                                       │
+│                                                                 │
+│  ┌───────────────┐         ┌──────────────┐                    │
+│  │  API Server   │         │  PostgreSQL  │                    │
+│  │  :3000        │ ◄──────►│  + TimescaleDB│                   │
+│  └───────────────┘         └──────────────┘                    │
+│          │                                                     │
+│  ┌───────┴───────┐                                            │
+│  │  Scraper      │                                             │
+│  └───────────────┘                                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Services (Docker Compose)
+
+| Service | Role | Database Access | Exposed Port | Notes |
+|---------|------|-----------------|--------------|-------|
+| **api** | REST + WebSocket | Read-only | `:3000` | In dev: `localhost:3000`. In prod: internal only via nginx upstream |
+| **postgres** | Data store | N/A | None | Docker network only |
+| **scraper** | Data collection | Read-write | None | Docker network only |
 
 ### Key Design Decisions
 
-1. **Scraper Direct Access**: Scrapers bypass the API layer and write directly to Postgres. This is safe because:
+1. **Scraper Direct Access**: Scrapers write directly to Postgres within the Docker network. This is safe because:
+   - No database port is exposed externally
    - All scrapers run within the isolated Docker network
-   - No external access to the database port
-   - Single write pattern per data type (no conflicts)
 
-2. **API Layer Responsibilities**:
+2. **API Layer (FastAPI) Responsibilities**:
    - **Read Operations**: All SELECT queries for the frontend
-   - **Data Transformation**: Formatting, interpolation, and aggregation
-   - **WebSocket Broadcast**: Receives internal notifications from scrapers and pushes to clients
+   - **Data Transformation**: Formatting, interpolation, aggregation
+   - **WebSocket Broadcast**: Receives internal notifications from scrapers, pushes to clients
    - **Health Checks**: Exposes `/api/health` endpoints
 
-3. **Single Database Instance**: Both Production (`pch.onl`) and Staging (`staging.pch.onl`) read from the same PostgreSQL instance. They are differentiated by:
-   - Different frontend containers
-   - Separate API server containers
-   - Same database (data is shared for both environments)
+3. **Nginx (Host) Responsibilities**:
+   - **TLS Termination**: Let's Encrypt or similar
+   - **Static Files**: Serves built SPA from `/var/www/pacifica/prod/` or `/staging/`
+   - **Upstream Proxy**: Routes `/api` requests to `localhost:3000` (not publicly exposed)
+   - **WebSocket Upgrade**: Handles WS connections for real-time updates
+
+4. **Single Database Instance**: Production (`pch.onl`) and Staging (`staging.pch.onl`) share the same PostgreSQL instance, differentiated by separate API containers.
 
 ## 3. GitHub Actions CI/CD
 The repository at `https://github.com/pandeiro/pacifica` uses GitHub Actions for automation.
