@@ -41,11 +41,17 @@ All generated content should read like a **passionate, knowledgeable local**—t
 
 ## Workflow
 
+### Before Starting Work
 Before starting any work, run through `KICKOFF.md` to:
 1. Check repo state and update progress
 2. Identify the next task from the Roadmap
 3. Evaluate complexity and decide on branching strategy
 4. Begin work with the relevant spec loaded
+
+### After Completing Work
+- **Stage and commit** your changes with a descriptive message
+- **Never push** to the remote repository unless explicitly told to do so
+- The user will instruct you when to push (e.g., to trigger CI/CD or share progress)
 
 ## Quick Reference
 
