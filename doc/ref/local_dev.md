@@ -23,19 +23,19 @@ docker compose logs -f
 | Service | Port | Access |
 |---------|------|--------|
 | Postgres | 5432 | `localhost:5432` |
-| API Server | 3000 | `http://localhost:3000` (exposed for dev) |
+| API Server | 4900 | `http://localhost:4900` (exposed for dev) |
 | Frontend | 5173 | `http://localhost:5173` (Vite dev server) |
 
 ### Production vs. Development
 
 **Development:**
 - Vite dev server serves the SPA at `localhost:5173`
-- API server exposed at `localhost:3000`
+- API server exposed at `localhost:4900`
 - No nginx involved (direct browser → API communication)
 
 **Production:**
 - Nginx (on host) serves static SPA from `/var/www/pacifica/prod/`
-- Nginx proxies `/api` requests to `localhost:3000` (not publicly exposed)
+- Nginx proxies `/api` requests to `localhost:4900` (not publicly exposed)
 - Nginx handles WebSocket upgrades at `wss://pch.onl/api/ws`
 
 ## 3. Database Access
@@ -58,7 +58,7 @@ HOME_LNG=-118.XXXX
 GOOGLE_MAPS_API_KEY=...
 
 # Optional services
-LLM_SERVICE_URL=http://localhost:3000/v1
+LLM_SERVICE_URL=http://localhost:4900/v1
 ```
 
 ### Docker Network

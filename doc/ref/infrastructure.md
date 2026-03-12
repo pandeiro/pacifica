@@ -21,7 +21,7 @@ The project follows a "Configuration as Code" approach, with all secrets and env
 │                                                                 │
 │    ┌─────────────────────────────────────────────────────────┐  │
 │    │  Static files    │  api.pch.onl (upstream)              │  │
-│    │  /var/www/pacifica  │  → localhost:3000 (internal only)│  │
+│    │  /var/www/pacifica  │  → localhost:4900 (internal only)│  │
 │    │  /prod/           │  ws://api.pch.onl                   │  │
 │    └─────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
@@ -31,7 +31,7 @@ The project follows a "Configuration as Code" approach, with all secrets and env
 │                                                                 │
 │  ┌───────────────┐         ┌──────────────┐                    │
 │  │  API Server   │         │  PostgreSQL  │                    │
-│  │  :3000        │ ◄──────►│  + TimescaleDB│                   │
+│  │  :4900        │ ◄──────►│  + TimescaleDB│                   │
 │  └───────────────┘         └──────────────┘                    │
 │          │                                                     │
 │  ┌───────┴───────┐                                            │
@@ -49,7 +49,7 @@ The project follows a "Configuration as Code" approach, with all secrets and env
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────────┐│
 │  │  Vite Dev Server  │  API Server (exposed port)            ││
-│  │  localhost:5173    │  localhost:3000                       ││
+│  │  localhost:5173    │  localhost:4900                       ││
 │  └─────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────┘
 
@@ -58,7 +58,7 @@ The project follows a "Configuration as Code" approach, with all secrets and env
 │                                                                 │
 │  ┌───────────────┐         ┌──────────────┐                    │
 │  │  API Server   │         │  PostgreSQL  │                    │
-│  │  :3000        │ ◄──────►│  + TimescaleDB│                   │
+│  │  :4900        │ ◄──────►│  + TimescaleDB│                   │
 │  └───────────────┘         └──────────────┘                    │
 │          │                                                     │
 │  ┌───────┴───────┐                                            │
@@ -71,7 +71,7 @@ The project follows a "Configuration as Code" approach, with all secrets and env
 
 | Service | Role | Database Access | Exposed Port | Notes |
 |---------|------|-----------------|--------------|-------|
-| **api** | REST + WebSocket | Read-only | `:3000` | In dev: `localhost:3000`. In prod: internal only via nginx upstream |
+| **api** | REST + WebSocket | Read-only | `:4900` | In dev: `localhost:4900`. In prod: internal only via nginx upstream |
 | **postgres** | Data store | N/A | None | Docker network only |
 | **scraper** | Data collection | Read-write | None | Docker network only |
 
@@ -90,7 +90,7 @@ The project follows a "Configuration as Code" approach, with all secrets and env
 3. **Nginx (Host) Responsibilities**:
    - **TLS Termination**: Let's Encrypt or similar
    - **Static Files**: Serves built SPA from `/var/www/pacifica/prod/` or `/staging/`
-   - **Upstream Proxy**: Routes `/api` requests to `localhost:3000` (not publicly exposed)
+   - **Upstream Proxy**: Routes `/api` requests to `localhost:4900` (not publicly exposed)
    - **WebSocket Upgrade**: Handles WS connections for real-time updates
 
 4. **Single Database Instance**: Production (`pch.onl`) and Staging (`staging.pch.onl`) share the same PostgreSQL instance, differentiated by separate API containers.
