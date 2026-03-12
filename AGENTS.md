@@ -13,7 +13,13 @@ This file provides guidance for AI agents working on the Pacifica project.
 | `doc/spec/PRD.md` | Product vision, architecture, and requirements |
 | `doc/spec/ROADMAP.md` | Execution checklist (Cards 01–37) |
 | `doc/ref/*.md` | Detailed technical references |
-| `doc/progress/SUMMARY.md` | Tracks completed and in-progress work |
+| `doc/progress/SUMMARY.md` | Progress tracker (one line per completed item) |
+
+### Progress Tracking
+The `doc/progress/SUMMARY.md` file uses a simple format:
+- Each line represents a completed work item
+- The **last line** is always the most recent work
+- To find the last item worked on, read only the last line of the file
 
 ## Tech Stack
 
