@@ -1,5 +1,5 @@
 # Progress Summary
 
-This document is used to track progress.
+Last line = most recent work. Each line = one completed work item.
 
-2025-03-12 Initial documentation restructure (PRD, Roadmap, Reference library) completed, no issues
+[00] Initial documentation restructure (PRD, Roadmap, Reference library)

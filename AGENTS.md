@@ -11,7 +11,7 @@ This file provides guidance for AI agents working on the Pacifica project.
 | Document | Purpose |
 |----------|---------|
 | `doc/spec/PRD.md` | Product vision, architecture, and requirements |
-| `doc/spec/ROADMAP.md` | Execution checklist (Cards 01–37) |
+| `doc/spec/ROADMAP.md` | Execution checklist (Cards 00–35) |
 | `doc/ref/*.md` | Detailed technical references |
 | `doc/progress/SUMMARY.md` | Progress tracker (one line per completed item) |
 

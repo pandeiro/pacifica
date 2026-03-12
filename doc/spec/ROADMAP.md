@@ -2,55 +2,58 @@
 
 This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is a functional unit from database to UI.
 
-## Foundation & Infrastructure
-- [ ] **Card 01: Scraper Base & Infrastructure** ([Spec](../ref/scrapers.md))
-- [ ] **Card 02: WebSocket Protocol** ([Spec](../ref/websockets.md))
-- [ ] **Card 03: Activity Score Formulas** ([Spec](../ref/scoring_logic.md))
-- [ ] **Card 04: Data Retention & TTL** ([Spec](../ref/database.md))
-- [ ] **Card 05: Database Schema Migrations** ([Spec](../ref/database.md))
-- [ ] **Card 06: Testing Infrastructure** ([Spec](../ref/testing_infra.md))
-- [ ] **Card 34: GitHub Actions (CI/CD)** ([Spec](../ref/infrastructure.md))
-- [ ] **Card 35: Nginx & Asset Deployment** ([Spec](../ref/infrastructure.md))
+## 0. Infrastructure Setup
+- [ ] **Card 00: Frontend Scaffold** — Initialize React/Vite/TypeScript project, basic tile layout shell
+- [ ] **Card 01: Services & Docker Compose** — Scaffold Python FastAPI app, scraper structure, docker-compose.yml
+- [ ] **Card 02: GitHub Actions** — CI/CD pipeline that builds and deploys to staging/prod
 
-## Slice A — Tides & Sun
-- [ ] **Card 07: NOAA Tides Scraper** ([Spec](../ref/tides_slice.md))
-- [ ] **Card 08: Tides API Endpoint** ([Spec](../ref/tides_slice.md))
-- [ ] **Card 09: Tides & Sun Frontend Tile** ([Spec](../ref/tides_slice.md))
-- [ ] **Card 10: Sun Events Scraper** ([Spec](../ref/tides_slice.md))
+## 1. Core Foundation
+- [ ] **Card 03: Database Schema Migrations** — All table definitions, TimescaleDB hypertables
+- [ ] **Card 04: Scraper Base Class** — BaseScraper abstract class, retry logic, LLM extraction
+- [ ] **Card 05: WebSocket Protocol** — Connection manager, message types, client hook
+- [ ] **Card 06: Activity Score Formulas** — Scoring algorithms for all activities
+- [ ] **Card 07: Data Retention & TTL** — TimescaleDB retention/compression policies
+- [ ] **Card 08: Testing Infrastructure** — pytest, Vitest, agent-browser setup
 
-## Slice B — Conditions
-- [ ] **Card 11: NOAA Water Temp Scraper**
-- [ ] **Card 12: South Coast Divers Scraper**
-- [ ] **Card 13: Conditions API Endpoint**
-- [ ] **Card 14: Conditions Frontend Tile**
+## 2. Slice A — Tides & Sun
+- [ ] **Card 09: NOAA Tides Scraper**
+- [ ] **Card 10: Tides API Endpoint**
+- [ ] **Card 11: Tides & Sun Frontend Tile**
+- [ ] **Card 12: Sun Events Scraper**
 
-## Slice C — Wildlife Sightings
-- [ ] **Card 15: iNaturalist Scraper**
-- [ ] **Card 16: Harbor Breeze Scraper**
-- [ ] **Card 17: Davey's Locker Scraper**
-- [ ] **Card 18: Dana Wharf Scraper**
-- [ ] **Card 19: Island Packers Scraper**
-- [ ] **Card 20: Twitter/X Scrapers**
-- [ ] **Card 21: Sightings API Endpoint**
-- [ ] **Card 22: Wildlife Intelligence Frontend Tile**
+## 3. Slice B — Conditions
+- [ ] **Card 13: NOAA Water Temp Scraper**
+- [ ] **Card 14: South Coast Divers Scraper**
+- [ ] **Card 15: Conditions API Endpoint**
+- [ ] **Card 16: Conditions Frontend Tile**
 
-## Slice D — Activity Scores
-- [ ] **Card 23: Activity Score Worker**
-- [ ] **Card 24: Activity Scores API Endpoint**
-- [ ] **Card 25: Activity Scores Frontend Tile**
+## 4. Slice C — Wildlife Sightings
+- [ ] **Card 17: iNaturalist Scraper**
+- [ ] **Card 18: Harbor Breeze Scraper**
+- [ ] **Card 19: Davey's Locker Scraper**
+- [ ] **Card 20: Dana Wharf Scraper**
+- [ ] **Card 21: Island Packers Scraper**
+- [ ] **Card 22: Twitter/X Scrapers**
+- [ ] **Card 23: Sightings API Endpoint**
+- [ ] **Card 24: Wildlife Intelligence Frontend Tile**
 
-## Slice E — Map
-- [ ] **Card 26: Locations Seed Data**
-- [ ] **Card 27: Map Frontend Tile**
-- [ ] **Card 28: Drive Times (Google Maps)**
+## 5. Slice D — Activity Scores
+- [ ] **Card 25: Activity Score Worker**
+- [ ] **Card 26: Activity Scores API Endpoint**
+- [ ] **Card 27: Activity Scores Frontend Tile**
 
-## Slice F — Live Cams
-- [ ] **Card 29: Live Cams Seed Data**
-- [ ] **Card 30: Live Cam Frontend Tile**
+## 6. Slice E — Map
+- [ ] **Card 28: Locations Seed Data**
+- [ ] **Card 29: Map Frontend Tile**
+- [ ] **Card 30: Drive Times (Google Maps)**
 
-## Slice G — Seasonal Timeline
-- [ ] **Card 31: Seasonal Events Seed Data**
-- [ ] **Card 32: Seasonal Timeline Frontend Tile**
+## 7. Slice F — Live Cams
+- [ ] **Card 31: Live Cams Seed Data**
+- [ ] **Card 32: Live Cam Frontend Tile**
 
-## Slice H — LLM Extraction
-- [ ] **Card 33: LLM Extraction Schemas**
+## 8. Slice G — Seasonal Timeline
+- [ ] **Card 33: Seasonal Events Seed Data**
+- [ ] **Card 34: Seasonal Timeline Frontend Tile**
+
+## 9. Slice H — LLM Extraction
+- [ ] **Card 35: LLM Extraction Schemas**
