@@ -1,0 +1,31 @@
+# Base Docker Compose for VPS
+# This file is combined with docker-compose.prod.yml or docker-compose.staging.yml
+# PostgreSQL runs once and is shared between environments
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: pacifica-postgres
+    environment:
+      POSTGRES_DB: pacifica
+      POSTGRES_USER: pacifica
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/migrations:ro
+      - ./seed:/seed:ro
+    networks:
+      - pacifica
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pacifica -d pacifica"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  pacifica:
+    driver: bridge

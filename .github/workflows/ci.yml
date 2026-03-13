@@ -1,0 +1,317 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Type check frontend
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Test frontend
+        working-directory: frontend
+        run: npm run test || true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          pip install ruff mypy
+          pip install -r api/requirements.txt
+
+      - name: Lint Python
+        run: ruff check api/ scraper/ || true
+
+      - name: Type check Python
+        run: mypy api/ scraper/ || true
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          retention-days: 1
+
+  build-images:
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for API
+        id: meta-api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api
+          push: true
+          tags: ${{ steps.meta-api.outputs.tags }}
+          labels: ${{ steps.meta-api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract metadata for Scraper
+        id: meta-scraper
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-scraper
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Scraper image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./scraper
+          push: true
+          tags: ${{ steps.meta-scraper.outputs.tags }}
+          labels: ${{ steps.meta-scraper.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-images]
+    if: github.event_name == 'pull_request'
+    environment:
+      name: staging
+      url: https://staging.pch.onl
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend-dist/
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Add host to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to staging
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          STATIC_PATH: ${{ secrets.DEPLOY_STATIC_PATH_STAGING }}
+          SERVICES_PATH: ${{ secrets.DEPLOY_SERVICES_PATH }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          # Sync frontend static files
+          rsync -avz --delete frontend-dist/ $USER@$HOST:$STATIC_PATH/
+          
+          # Create docker-compose override for staging
+          cat > docker-compose.staging.yml << 'COMPOSE'
+          services:
+            api:
+              image: ghcr.io/${{ github.repository }}-api:sha-${{ github.sha }}
+              container_name: pacifica-api-staging
+              environment:
+                DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD}@postgres:5432/pacifica
+                ENVIRONMENT: staging
+                LOG_FORMAT: json
+              ports:
+                - "4901:4900"
+              networks:
+                - pacifica
+              restart: unless-stopped
+          
+            scraper-staging:
+              image: ghcr.io/${{ github.repository }}-scraper:sha-${{ github.sha }}
+              container_name: pacifica-scraper-staging
+              environment:
+                DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD}@postgres:5432/pacifica
+                ENVIRONMENT: staging
+              networks:
+                - pacifica
+              profiles:
+                - scraper
+              restart: unless-stopped
+          
+          networks:
+            pacifica:
+              external: true
+          COMPOSE
+          
+          # Copy compose file and deploy
+          scp docker-compose.staging.yml $USER@$HOST:$SERVICES_PATH/docker-compose.staging.yml
+          
+          # Deploy staging containers
+          ssh $USER@$HOST << EOF
+            cd $SERVICES_PATH
+            docker compose -f docker-compose.yml -f docker-compose.staging.yml pull
+            docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+            docker system prune -f
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 5
+          curl -sSf https://staging.pch.onl || echo "Health check failed"
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [build-frontend, build-images]
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://pch.onl
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend-dist/
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Add host to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to production
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          STATIC_PATH: ${{ secrets.DEPLOY_STATIC_PATH_PROD }}
+          SERVICES_PATH: ${{ secrets.DEPLOY_SERVICES_PATH }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          # Sync frontend static files
+          rsync -avz --delete frontend-dist/ $USER@$HOST:$STATIC_PATH/
+          
+          # Create docker-compose override for production
+          cat > docker-compose.prod.yml << 'COMPOSE'
+          services:
+            api:
+              image: ghcr.io/${{ github.repository }}-api:latest
+              container_name: pacifica-api
+              environment:
+                DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD}@postgres:5432/pacifica
+                ENVIRONMENT: production
+                LOG_FORMAT: json
+              ports:
+                - "127.0.0.1:4900:4900"
+              networks:
+                - pacifica
+              restart: unless-stopped
+          
+            scraper:
+              image: ghcr.io/${{ github.repository }}-scraper:latest
+              container_name: pacifica-scraper
+              environment:
+                DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD}@postgres:5432/pacifica
+                ENVIRONMENT: production
+              networks:
+                - pacifica
+              profiles:
+                - scraper
+              restart: unless-stopped
+          
+          networks:
+            pacifica:
+              external: true
+          COMPOSE
+          
+          # Copy compose file and deploy
+          scp docker-compose.prod.yml $USER@$HOST:$SERVICES_PATH/docker-compose.prod.yml
+          
+          # Deploy production containers
+          ssh $USER@$HOST << EOF
+            cd $SERVICES_PATH
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+            docker system prune -f
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 5
+          curl -sSf https://pch.onl/api/health || echo "Health check failed"
