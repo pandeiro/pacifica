@@ -76,14 +76,14 @@ jobs:
         if: github.ref == 'refs/heads/main'
         working-directory: frontend
         env:
-          VITE_API_URL: ${{ secrets.API_URL_PROD }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: npm run build
 
       - name: Build frontend (Staging)
         if: github.event_name == 'pull_request'
         working-directory: frontend
         env:
-          VITE_API_URL: ${{ secrets.API_URL_STAGING }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL_STAGING }}
         run: npm run build
 
       - name: Upload build artifact

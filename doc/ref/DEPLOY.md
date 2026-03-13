@@ -152,14 +152,14 @@ server {
 ### On Pull Request
 
 1. Runs validation (lint, typecheck, tests)
-2. Builds frontend with `VITE_API_URL` from `API_URL_STAGING` secret
+2. Builds frontend with `VITE_API_URL_STAGING` from environment
 3. Builds Docker images with SHA tag
 4. Deploys frontend to staging path only
 
 ### On Main Branch Push
 
 1. Runs validation
-2. Builds frontend with `VITE_API_URL` from `API_URL_PROD` secret
+2. Builds frontend with `VITE_API_URL` from environment
 3. Builds Docker images with `latest` tag
 4. Deploys:
    - Frontend to production path
@@ -207,8 +207,8 @@ docker system prune -f
 The frontend uses `VITE_API_URL` environment variable to determine where to make API calls:
 
 - **Local development**: Set in `.env` as `VITE_API_URL=http://localhost:4900`
-- **Production build**: Set during CI from `API_URL_PROD` secret
-- **Staging build**: Set during CI from `API_URL_STAGING` secret
+- **Production build**: Set during CI from `VITE_API_URL` environment variable
+- **Staging build**: Set during CI from `VITE_API_URL_STAGING` environment variable
 
 See `frontend/src/config.ts` for the API client configuration.
 
