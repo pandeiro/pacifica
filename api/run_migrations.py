@@ -4,24 +4,24 @@
 import os
 import sys
 from pathlib import Path
+
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
-import structlog
+from logging_config import configure_logging, get_logger
 
-logger = structlog.get_logger("migrations")
+# Configure logging first
+configure_logging()
+logger = get_logger("migrations")
 
 
 def get_connection():
     """Get database connection from environment."""
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        database_url = "postgresql://pacifica:password@postgres:5432/pacifica"
-
-    # Convert asyncpg URL to psycopg2 format if needed
+    database_url = os.getenv(
+        "DATABASE_URL", "postgresql://pacifica:password@postgres:5432/pacifica"
+    )
     database_url = database_url.replace("postgresql+asyncpg", "postgresql")
     database_url = database_url.replace("postgresql+psycopg2", "postgresql")
-
     return psycopg2.connect(database_url)
 
 
@@ -33,7 +33,6 @@ def run_migrations(migrations_dir: str = "/app/migrations"):
         logger.warning("Migrations directory not found", path=migrations_dir)
         return
 
-    # Get all .sql files and sort them
     sql_files = sorted(migrations_path.glob("*.sql"))
 
     if not sql_files:
@@ -59,11 +58,7 @@ def run_migrations(migrations_dir: str = "/app/migrations"):
 
         logger.info("All migrations completed successfully")
     except Exception as e:
-        logger.error(
-            "Migration failed",
-            error=str(e),
-            file=sql_file.name if "sql_file" in locals() else None,
-        )
+        logger.error("Migration failed", error=str(e))
         sys.exit(1)
     finally:
         cursor.close()
@@ -103,11 +98,7 @@ def run_seed(seed_dir: str = "/app/seed"):
 
         logger.info("All seed data loaded successfully")
     except Exception as e:
-        logger.error(
-            "Seed failed",
-            error=str(e),
-            file=sql_file.name if "sql_file" in locals() else None,
-        )
+        logger.error("Seed failed", error=str(e))
         sys.exit(1)
     finally:
         cursor.close()
@@ -115,7 +106,7 @@ def run_seed(seed_dir: str = "/app/seed"):
 
 
 if __name__ == "__main__":
-    logger.info("Starting database setup")
+    logger.info("Running database setup...")
     run_migrations()
     run_seed()
     logger.info("Database setup complete")
