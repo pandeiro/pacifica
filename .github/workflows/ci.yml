@@ -83,7 +83,7 @@ jobs:
         if: github.event_name == 'pull_request'
         working-directory: frontend
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL_STAGING }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: npm run build
 
       - name: Upload build artifact
