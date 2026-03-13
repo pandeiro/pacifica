@@ -126,7 +126,8 @@ jobs:
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
-          context: ./api
+          context: .
+          file: ./api/Dockerfile
           push: true
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}
@@ -187,10 +188,11 @@ jobs:
           SERVICES_PATH: ${{ secrets.DEPLOY_SERVICES_PATH }}
           STATIC_PATH_PROD: ${{ secrets.DEPLOY_STATIC_PATH_PROD }}
           STATIC_PATH_STAGING: ${{ secrets.DEPLOY_STATIC_PATH_STAGING }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
           GHCR_USER: ${{ github.actor }}
         run: |
+          set -e  # Exit on any error
+          
           # Determine environment
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             STATIC_PATH=$STATIC_PATH_PROD
@@ -207,9 +209,27 @@ jobs:
           
           # Deploy backend (production only - staging shares the same API)
           if [ "$IS_PROD" = true ]; then
-            # Create docker-compose override for production
-            cat > docker-compose.prod.yml << 'COMPOSE'
+            # Create complete docker-compose.yml with postgres, api, and scraper
+            cat > docker-compose.yml << 'COMPOSE'
           services:
+            postgres:
+              image: timescale/timescaledb:latest-pg16
+              container_name: pacifica-postgres
+              environment:
+                POSTGRES_DB: pacifica
+                POSTGRES_USER: pacifica
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+              volumes:
+                - postgres_data:/var/lib/postgresql/data
+              networks:
+                - pacifica
+              healthcheck:
+                test: ["CMD-SHELL", "pg_isready -U pacifica -d pacifica"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
+              restart: unless-stopped
+          
             api:
               image: ghcr.io/${{ github.repository }}-api:latest
               container_name: pacifica-api
@@ -221,6 +241,9 @@ jobs:
                 - "127.0.0.1:4900:4900"
               networks:
                 - pacifica
+              depends_on:
+                postgres:
+                  condition: service_healthy
               restart: unless-stopped
           
             scraper:
@@ -231,24 +254,31 @@ jobs:
                 ENVIRONMENT: production
               networks:
                 - pacifica
+              depends_on:
+                postgres:
+                  condition: service_healthy
               profiles:
                 - scraper
               restart: unless-stopped
           
+          volumes:
+            postgres_data:
+          
           networks:
             pacifica:
-              external: true
+              driver: bridge
           COMPOSE
             
-            # Copy compose file and deploy
-            scp docker-compose.prod.yml $USER@$HOST:$SERVICES_PATH/docker-compose.prod.yml
+            # Copy compose file to VPS (migrations and seed are baked into the API image)
+            scp docker-compose.yml $USER@$HOST:$SERVICES_PATH/docker-compose.yml
             
             # Deploy containers with GHCR authentication
             ssh $USER@$HOST << EOF
+              set -e
               cd $SERVICES_PATH
               echo $GHCR_TOKEN | docker login ghcr.io -u $GHCR_USER --password-stdin
-              docker compose -f docker-compose.base.yml -f docker-compose.prod.yml pull
-              docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+              docker compose pull
+              docker compose up -d
               docker logout ghcr.io
               docker system prune -f
           EOF
@@ -256,9 +286,14 @@ jobs:
 
       - name: Health check
         run: |
-          sleep 5
+          set -e
+          sleep 10
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            curl -sSf https://pch.onl/api/health || echo "Health check failed"
+            echo "Checking production health..."
+            curl -sSf https://pch.onl/api/health
+            echo "Production is healthy!"
           else
-            curl -sSf https://staging.pch.onl || echo "Health check failed"
+            echo "Checking staging..."
+            curl -sSf https://staging.pch.onl
+            echo "Staging is up!"
           fi
