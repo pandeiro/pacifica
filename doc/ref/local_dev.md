@@ -36,7 +36,7 @@ docker compose logs -f
 **Production:**
 - Nginx (on host) serves static SPA from `/var/www/pacifica/prod/`
 - Nginx proxies `/api` requests to `localhost:4900` (not publicly exposed)
-- Nginx handles WebSocket upgrades at `wss://pch.onl/api/ws`
+- Nginx handles WebSocket upgrades at `wss://api.pch.onl/ws`
 
 ## 3. Database Access
 

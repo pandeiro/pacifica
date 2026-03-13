@@ -152,14 +152,14 @@ server {
 ### On Pull Request
 
 1. Runs validation (lint, typecheck, tests)
-2. Builds frontend with `VITE_API_URL=https://staging.pch.onl/api`
+2. Builds frontend with `VITE_API_URL=https://api-staging.pch.onl`
 3. Builds Docker images with SHA tag
 4. Deploys frontend to staging path only
 
 ### On Main Branch Push
 
 1. Runs validation
-2. Builds frontend with `VITE_API_URL=https://pch.onl/api`
+2. Builds frontend with `VITE_API_URL=https://api.pch.onl`
 3. Builds Docker images with `latest` tag
 4. Deploys:
    - Frontend to production path
@@ -207,8 +207,8 @@ docker system prune -f
 The frontend uses `VITE_API_URL` environment variable to determine where to make API calls:
 
 - **Local development**: Set in `.env` as `VITE_API_URL=http://localhost:4900`
-- **Production build**: Set during CI as `VITE_API_URL=https://pch.onl/api`
-- **Staging build**: Set during CI as `VITE_API_URL=https://staging.pch.onl/api`
+- **Production build**: Set during CI as `VITE_API_URL=https://api.pch.onl`
+- **Staging build**: Set during CI as `VITE_API_URL=https://api-staging.pch.onl`
 
 See `frontend/src/config.ts` for the API client configuration.
 

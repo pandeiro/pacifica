@@ -76,14 +76,14 @@ jobs:
         if: github.ref == 'refs/heads/main'
         working-directory: frontend
         env:
-          VITE_API_URL: https://pch.onl/api
+          VITE_API_URL: https://api.pch.onl
         run: npm run build
 
       - name: Build frontend (Staging)
         if: github.event_name == 'pull_request'
         working-directory: frontend
         env:
-          VITE_API_URL: https://staging.pch.onl/api
+          VITE_API_URL: https://api-staging.pch.onl
         run: npm run build
 
       - name: Upload build artifact
