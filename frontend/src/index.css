@@ -1,0 +1,119 @@
+/* Deep Ocean Mission Control - Pacifica Dashboard */
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Deep Ocean Palette */
+  --abyss: #050a14;
+  --deep-ocean: #0a1628;
+  --ocean-mid: #0d3b4c;
+  --ocean-shallow: #1a5f7a;
+  --teal-glow: #2d8b96;
+  --surf-foam: #7dd3c0;
+  
+  /* Bioluminescent Accents */
+  --glow-cyan: #00d4aa;
+  --glow-coral: #ff6b6b;
+  --glow-amber: #ffd93d;
+  --glow-purple: #c084fc;
+  
+  /* Data Colors */
+  --score-epic: #00d4aa;
+  --score-great: #74c69d;
+  --score-good: #ffd93d;
+  --score-fair: #ff9f43;
+  --score-poor: #ff6b6b;
+  
+  /* Text Hierarchy */
+  --text-primary: #e8f4f8;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-glow: rgba(0, 212, 170, 0.9);
+  
+  /* Surface Effects */
+  --glass-bg: rgba(13, 59, 76, 0.4);
+  --glass-border: rgba(45, 139, 150, 0.3);
+  --glass-highlight: rgba(125, 211, 192, 0.1);
+  
+  /* Typography */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  
+  /* Spacing */
+  --tile-gap: 1rem;
+  --tile-padding: 1.25rem;
+  --border-radius: 12px;
+  
+  /* Animation */
+  --transition-fast: 150ms ease;
+  --transition-medium: 300ms ease;
+  --transition-slow: 500ms ease;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-display);
+  background: 
+    radial-gradient(ellipse at 0% 0%, rgba(13, 59, 76, 0.8) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(26, 95, 122, 0.4) 0%, transparent 50%),
+    var(--abyss);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ambient Background Animation */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(0, 212, 170, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(255, 107, 107, 0.03) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: -1;
+  animation: ambientPulse 8s ease-in-out infinite;
+}
+
+@keyframes ambientPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--deep-ocean);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ocean-shallow);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--teal-glow);
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 212, 170, 0.3);
+  color: var(--text-primary);
+}

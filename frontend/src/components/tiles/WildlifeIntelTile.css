@@ -1,0 +1,88 @@
+.wildlife-intel {
+  min-height: 200px;
+}
+
+.sightings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.sighting-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.625rem;
+  background: rgba(10, 22, 40, 0.5);
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.sighting-item:hover {
+  background: rgba(13, 59, 76, 0.6);
+  transform: translateX(4px);
+}
+
+.sighting-item--hot {
+  border-left-color: var(--glow-coral);
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.sighting-item__emoji {
+  font-size: 1.5rem;
+  width: 32px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sighting-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sighting-item__species {
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sighting-item__hot-badge {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: var(--glow-coral);
+  background: rgba(255, 107, 107, 0.2);
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+
+.sighting-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+.sighting-item__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.sighting-item__time {
+  color: var(--teal-glow);
+  white-space: nowrap;
+}

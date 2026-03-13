@@ -1,0 +1,110 @@
+.live-cam {
+  min-height: 200px;
+}
+
+.live-cam__viewport {
+  flex: 1;
+  background: var(--abyss);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.live-cam__placeholder {
+  text-align: center;
+  padding: 2rem;
+}
+
+.live-cam__icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.6;
+}
+
+.live-cam__label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.live-cam__overlay {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(5, 10, 20, 0.8);
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.live-cam__live-badge {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--score-poor);
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.live-cam__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--score-poor);
+  animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.live-cam__cam-name {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-secondary);
+}
+
+.live-cam__selector {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.live-cam__option {
+  flex-shrink: 0;
+  padding: 0.5rem 0.75rem;
+  background: rgba(10, 22, 40, 0.5);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.live-cam__option:hover {
+  background: rgba(13, 59, 76, 0.6);
+  border-color: var(--teal-glow);
+  color: var(--text-primary);
+}
+
+.live-cam__option--active {
+  background: rgba(0, 212, 170, 0.15);
+  border-color: var(--glow-cyan);
+  color: var(--glow-cyan);
+}
