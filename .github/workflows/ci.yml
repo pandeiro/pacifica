@@ -232,6 +232,8 @@ jobs:
             api:
               image: ghcr.io/${{ github.repository }}-api:latest
               container_name: pacifica-api
+              labels:
+                logging: enabled
               environment:
                 DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD}@postgres:5432/pacifica
                 ENVIRONMENT: production
@@ -248,6 +250,8 @@ jobs:
             scraper:
               image: ghcr.io/${{ github.repository }}-scraper:latest
               container_name: pacifica-scraper
+              labels:
+                logging: enabled
               environment:
                 DATABASE_URL: postgresql+asyncpg://pacifica:${POSTGRES_PASSWORD}@postgres:5432/pacifica
                 ENVIRONMENT: production
