@@ -7,3 +7,4 @@ Last line = most recent work. Each line = one completed work item.
 [02] Dashboard UI: Deep ocean aesthetic with tiled layout - Map, Activity Scores, Live Cam, Conditions, Wildlife Intel, Tides & Sun, Drive Times, Seasonal Timeline
 [02b] Dashboard mockup refinements: timeline layout improved, all 8 tiles properly proportioned, screenshot captured
 [03] Services scaffolding: FastAPI API (port 4900), scraper package structure, Docker Compose with postgres + api + scraper, Makefile commands updated
+[03b] README: Comprehensive overview, tech stack, quick start guide, and development commands
