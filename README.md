@@ -1,8 +1,8 @@
 # Pacifica
 
-Real-time coastal intelligence for Southern California. A mission control dashboard aggregating tides, conditions, wildlife sightings, and live cams from San Diego to San Simeon.
+[![CI/CD](https://github.com/pandeiro/pacifica/actions/workflows/ci.yml/badge.svg)](https://github.com/pandeiro/pacifica/actions/workflows/ci.yml)
 
-**Live**: https://pch.onl
+Real-time coastal intelligence for Southern California. A mission control dashboard aggregating tides, conditions, wildlife sightings, and live cams from San Diego to San Simeon.
 
 ## Overview
 
@@ -87,9 +87,16 @@ pacifica/
 └── doc/              # Documentation (specs, references)
 ```
 
-## Voice
+## Data Sources
 
-Content reads like a **passionate, knowledgeable local**—the person at the dive shop who always knows where the action is. Practical, opinionated, and genuinely interested in wildlife.
+Pacifica aggregates data from multiple sources via automated scrapers:
+
+| Source | Data | Frequency |
+|--------|------|-----------|
+| **NOAA CO-OPS** | Tide predictions, water levels | Every 6 hours |
+| **sunrise-sunset.org** | Sunrise, sunset, golden hour | Daily at 2:30 AM |
+
+Scrapers run via GitHub Actions (see `.github/workflows/scrapers.yml`) and write directly to the TimescaleDB database. Each scraper is designed to be polite—respecting rate limits and using incremental backoff when needed.
 
 ## License
 

@@ -303,6 +303,9 @@ jobs:
         run: |
           set -e
           
+          echo "Waiting for services to start (Postgres + API need time to initialize)..."
+          sleep 20
+          
           echo "Waiting for API to be ready (checking from VPS)..."
           
           # Poll from VPS (API is bound to localhost:4900)
