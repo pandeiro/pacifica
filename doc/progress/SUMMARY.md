@@ -14,3 +14,4 @@ Last line = most recent work. Each line = one completed work item.
 [04d] Bake migrations into API image: Self-contained deployment with migrations and seed baked into Docker image, runs automatically on container startup
 [09] NOAA Tides Scraper: Implemented Python scraper fetching tide predictions from NOAA CO-OPS API for 5 stations, with test coverage and Docker integration
 [03] Database Schema Migrations: Created 4 migration files (001_tables, 002_hypertables, 003_indexes, 004_constraints) with TimescaleDB support, 10 tables, 4 hypertables, and location seed data for NOAA stations
+[03b] Added Shaws Cove (Laguna Beach) and Zuma Beach (Malibu) to location seed data with coastline bearings and NOAA station mappings
