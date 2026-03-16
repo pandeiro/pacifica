@@ -18,3 +18,4 @@ Last line = most recent work. Each line = one completed work item.
 [10] Tides API Endpoint: Implemented GET /api/tides with station_id query param, returns tide events with next_low/next_high and interpolated current_height. Created database.py with SQLAlchemy async models, schemas with Pydantic, and routes module
 [11] Tides & Sun Frontend Tile: Implemented D3.js tide curve visualization with pulsing current-position dot, NextTides and SunEvents components, integrated with useTides hook for API and WebSocket updates
 [12] Sun Events Scraper: Implemented sunrise-sunset.org scraper fetching sunrise, sunset, and golden hour data for 7 locations × 8 days, with polite rate limiting and error handling
+README and CI/CD improvements: Added build badge, removed live site link and Voice section, added scrapers data sources section, added 20s initialization pause to GHA healthcheck
