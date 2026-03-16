@@ -12,3 +12,4 @@ Last line = most recent work. Each line = one completed work item.
 [04b] CI/CD fixes: Single API architecture, GHCR authentication, frontend VITE_API_URL configuration
 [04c] CI/CD deployment: Successfully deployed to pch.onl and staging.pch.onl
 [04d] Bake migrations into API image: Self-contained deployment with migrations and seed baked into Docker image, runs automatically on container startup
+[09] NOAA Tides Scraper: Implemented Python scraper fetching tide predictions from NOAA CO-OPS API for 5 stations, with test coverage and Docker integration

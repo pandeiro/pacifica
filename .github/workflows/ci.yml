@@ -96,6 +96,7 @@ jobs:
   build-images:
     runs-on: ubuntu-latest
     needs: validate
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     permissions:
       contents: read
       packages: write
@@ -120,7 +121,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push API image
@@ -143,7 +144,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=sha,prefix={{branch}}-
+            type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Scraper image
