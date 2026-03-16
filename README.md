@@ -2,7 +2,7 @@
 
 [![CI/CD](https://github.com/pandeiro/pacifica/actions/workflows/ci.yml/badge.svg)](https://github.com/pandeiro/pacifica/actions/workflows/ci.yml)
 
-Real-time coastal intelligence for Southern California. A mission control dashboard aggregating tides, conditions, wildlife sightings, and live cams from San Diego to San Simeon.
+Real-time dashboard for Southern California coastline with tides, conditions, wildlife, live cams, etc
 
 ## Overview
 
