@@ -44,3 +44,8 @@ docker-compose.override.yml
 *.pem
 *.key
 credentials.json
+
+# Screenshots (generated during testing)
+/screenshots/
+*.png
+!frontend/public/**/*.png

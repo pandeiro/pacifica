@@ -25,7 +25,7 @@ export function Dashboard() {
         <div className="dashboard__right">
           <LiveCamTile />
           <WildlifeIntelTile />
-          <TidesSunTile />
+          <TidesSunTile locationId={1} stationId="9410660" />
         </div>
       </div>
       

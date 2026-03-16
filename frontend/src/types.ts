@@ -61,3 +61,32 @@ export interface LiveCam {
   embedUrl: string;
   isLive: boolean;
 }
+
+// API Response Types
+export interface TideEvent {
+  timestamp: string;
+  type: 'high' | 'low' | 'predicted';
+  height_ft: number;
+}
+
+export interface TidesResponse {
+  station_id: string;
+  location_name: string;
+  events: TideEvent[];
+  next_low: TideEvent | null;
+  next_high: TideEvent | null;
+  current_height_ft: number | null;
+  data_through: string;
+}
+
+export interface SunEventsResponse {
+  location_id: number;
+  location_name: string;
+  date: string;
+  sunrise: string;
+  sunset: string;
+  golden_hour_morning_start: string;
+  golden_hour_morning_end: string;
+  golden_hour_evening_start: string;
+  golden_hour_evening_end: string;
+}
