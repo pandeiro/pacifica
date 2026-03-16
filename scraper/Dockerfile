@@ -14,5 +14,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy scraper code
 COPY . .
 
-# Default command - can be overridden for specific scrapers
-CMD ["python", "-c", "print('Scraper service ready. Run specific scrapers manually or via scheduler.')"]
+# Default command - runs the APScheduler to manage all scrapers
+CMD ["python", "scheduler.py"]

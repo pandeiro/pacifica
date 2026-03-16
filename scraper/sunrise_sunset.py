@@ -33,6 +33,8 @@ LOCATIONS = [
 class SunriseSunsetScraper(BaseScraper):
     """Sunrise/Sunset Scraper implementation using sunrise-sunset.org API."""
 
+    schedule = "30 2 * * *"  # Daily at 2:30 AM (after NOAA tides)
+
     def __init__(self):
         super().__init__("sunrise_sunset")
 

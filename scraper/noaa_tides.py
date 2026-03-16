@@ -30,6 +30,8 @@ STATIONS = {
 class NOAATidesScraper(BaseScraper):
     """NOAA Tides Scraper implementation."""
 
+    schedule = "0 2 * * *"  # Daily at 2:00 AM
+
     def __init__(self):
         super().__init__("noaa_tides")
         # Use the shared httpx client from BaseScraper if available
