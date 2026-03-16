@@ -10,7 +10,7 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 ## 1. Core Foundation
 - [ ] **Card 03: Database Schema Migrations** — All table definitions, TimescaleDB hypertables
 - [ ] **Card 04: Scraper Base Class** — BaseScraper abstract class, retry logic, LLM extraction
-- [ ] **Card 05: APScheduler Wiring** — Scheduler setup in scraper container, auto-discovery of scrapers, cron scheduling
+- [x] **Card 05: APScheduler Wiring** — Scheduler setup in scraper container, auto-discovery of scrapers, cron scheduling
 - [ ] **Card 06: WebSocket Protocol** — Connection manager, message types, client hook
 - [ ] **Card 07: Activity Score Formulas** — Scoring algorithms for all activities
 - [ ] **Card 08: Data Retention & TTL** — TimescaleDB retention/compression policies
