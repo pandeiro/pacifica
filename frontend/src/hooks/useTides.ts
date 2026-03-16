@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { TidesResponse, SunEventsResponse } from '../types';
+import { API_URL } from '../config';
 
 interface UseTidesReturn {
   tides: TidesResponse | null;
@@ -21,8 +22,8 @@ export function useTides(locationId: number, stationId: string): UseTidesReturn 
     
     try {
       const [tidesRes, sunRes] = await Promise.all([
-        fetch(`/api/tides?station_id=${stationId}&hours=48`),
-        fetch(`/api/sun?location_id=${locationId}`),
+        fetch(`${API_URL}/api/tides?station_id=${stationId}&hours=48`),
+        fetch(`${API_URL}/api/sun?location_id=${locationId}`),
       ]);
       
       if (!tidesRes.ok) {
