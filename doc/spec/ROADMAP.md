@@ -23,7 +23,7 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 - [x] **Card 13: Sun Events Scraper + Sun Tile** — Fetches sunrise/sunset data from sunrise-sunset.org API, persists to DB + compact Sun tile with location dropdown
 
 ## 3. Slice B — Conditions
-- [ ] **Card 14: NOAA Water Temp Scraper**
+- [x] **Card 14: NOAA Water Temp Scraper**
 - [ ] **Card 15: South Coast Divers Scraper**
 - [ ] **Card 16: Conditions API Endpoint**
 - [ ] **Card 17: Conditions Frontend Tile**

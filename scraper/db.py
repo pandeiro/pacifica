@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from api.database import Location, Tide, SunEvent, Base
+from api.database import Location, Tide, SunEvent, Condition, Base
 
 # Database URL from environment
 DATABASE_URL = os.getenv(
@@ -118,5 +118,26 @@ async def insert_sun_events(session: AsyncSession, records: List[Dict[str, Any]]
                 golden_hour_evening_end=record["golden_hour_evening_end"],
             )
             session.add(sun_event)
+
+    await session.flush()
+
+
+async def insert_conditions(session: AsyncSession, records: List[Dict[str, Any]]):
+    """Insert condition records into the database.
+
+    Stores hourly averages of environmental conditions like water temperature.
+    """
+    for record in records:
+        condition = Condition(
+            timestamp=record["timestamp"],
+            location_id=record["location_id"],
+            condition_type=record["condition_type"],
+            value=record["value"],
+            unit=record["unit"],
+            source=record.get("source", "noaa"),
+            source_url=record.get("source_url"),
+            raw_text=record.get("raw_text"),
+        )
+        session.add(condition)
 
     await session.flush()

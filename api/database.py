@@ -74,6 +74,25 @@ class SunEvent(Base):
     golden_hour_evening_end = Column(DateTime(timezone=True), nullable=False)
 
 
+class Condition(Base):
+    """Environmental conditions (water temp, wind, etc.) model."""
+
+    __tablename__ = "conditions"
+
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime(timezone=True), nullable=False)
+    location_id = Column(Integer, nullable=False)
+    condition_type = Column(
+        Text, nullable=False
+    )  # water_temp | wind_speed | air_temp | visibility
+    value = Column(Numeric(10, 3), nullable=False)
+    unit = Column(Text, nullable=False)  # fahrenheit | mph | knots | feet
+    source = Column(Text, nullable=False)
+    source_url = Column(Text)
+    raw_text = Column(Text)
+    meta = Column("metadata", JSONB, nullable=False, server_default=text("'{}'"))
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency to get database session."""
     async with AsyncSessionLocal() as session:

@@ -94,6 +94,7 @@ Pacifica aggregates data from multiple sources via automated scrapers:
 | Source | Data | Frequency |
 |--------|------|-----------|
 | **NOAA CO-OPS** | Tide predictions, water levels | Every 6 hours |
+| **NOAA CO-OPS** | Water temperature (hourly averages) | Every 6 hours |
 | **sunrise-sunset.org** | Sunrise, sunset, golden hour | Daily at 2:30 AM |
 
 Scrapers run via GitHub Actions (see `.github/workflows/scrapers.yml`) and write directly to the TimescaleDB database. Each scraper is designed to be polite—respecting rate limits and using incremental backoff when needed.
