@@ -163,7 +163,7 @@ export function TidesTile({ locationId }: TidesTileProps) {
     return (
       <div className="tile tides-tile" data-testid="tides-tile">
         <div className="tile__header">
-          <div className="tile__title">Tides</div>
+          <div className="tile__title">Next Tides</div>
         </div>
         <div className="tile__content" data-testid="tile-loading">
           <div className="loading-state">Loading tide data...</div>
@@ -171,12 +171,12 @@ export function TidesTile({ locationId }: TidesTileProps) {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="tile tides-tile tile--error" data-testid="tides-tile">
         <div className="tile__header">
-          <div className="tile__title">Tides</div>
+          <div className="tile__title">Next Tides</div>
         </div>
         <div className="tile__content" data-testid="tile-error">
           <div className="error-state">Tide data unavailable</div>
@@ -188,9 +188,14 @@ export function TidesTile({ locationId }: TidesTileProps) {
   return (
     <div className="tile tides-tile" data-testid="tides-tile">
       <div className="tile__header">
-        <div className="tile__title">Tides</div>
+        <div className="tile__title">Next Tides</div>
       </div>
-      
+      {tides?.station_info && (
+        <div className="tile__subtitle">
+          {tides.station_info.name} ({tides.station_info.distance_miles} mi {tides.station_info.direction})
+        </div>
+      )}
+
       <div className="tile__content">
         <div className="tides-tile__display">
           {tides?.next_low && (

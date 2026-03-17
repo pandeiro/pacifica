@@ -8,8 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db, Location, Tide
-from schemas import TideEvent, TidesResponse
+from schemas import TideEvent, TidesResponse, StationInfo
 from logging_config import get_logger
+from utils.station_utils import get_station_distance_and_direction
 
 router = APIRouter(prefix="/api", tags=["tides"])
 logger = get_logger("api.tides")
@@ -163,6 +164,17 @@ async def get_tides(
     if events:
         data_through = max(e.timestamp for e in events)
 
+    # Calculate station info
+    distance, direction = get_station_distance_and_direction(location, station)
+    station_info = None
+    if distance >= 0.1:
+        station_info = StationInfo(
+            name=station.name,
+            station_id=station.station_id,
+            distance_miles=round(distance, 1),
+            direction=direction,
+        )
+
     return TidesResponse(
         station_id=station_id,
         location_name=location.name,
@@ -171,4 +183,5 @@ async def get_tides(
         next_high=next_high,
         current_height_ft=current_height,
         data_through=data_through,
+        station_info=station_info,
     )

@@ -18,9 +18,6 @@ export function Dashboard() {
   const [locationId, setLocationId] = useState(DEFAULT_LOCATION_ID);
   const { locations, isLoading: locationsLoading } = useLocations();
   
-  // Get current location for station info display
-  const currentLocation = locations.find(loc => loc.id === locationId);
-  
   return (
     <div className="dashboard">
       <div className="dashboard__main">
@@ -43,21 +40,11 @@ export function Dashboard() {
               onChange={(e) => setLocationId(Number(e.target.value))}
               disabled={locationsLoading}
             >
-              {locations.map(loc => (
-                <option key={loc.id} value={loc.id}>{loc.name}</option>
-              ))}
-            </select>
-            {currentLocation?.station_info && (
-              <div className="location-selector__station-info">
-                Tides: {currentLocation.station_info.name}
-                {currentLocation.station_info.distance_miles > 0 && (
-                  <span className="station-info__distance">
-                    {' '}({currentLocation.station_info.distance_miles} mi {currentLocation.station_info.direction})
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+             {locations.map(loc => (
+                 <option key={loc.id} value={loc.id}>{loc.name}</option>
+               ))}
+             </select>
+           </div>
           <SunTile locationId={locationId} />
           <WaterTempsTile locationId={locationId} />
           <TidesTile locationId={locationId} />
