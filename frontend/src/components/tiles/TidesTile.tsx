@@ -4,7 +4,6 @@ import './TidesTile.css';
 
 interface TidesTileProps {
   locationId: number;
-  stationId: string;
 }
 
 function formatTime(isoString: string): string {
@@ -44,8 +43,8 @@ function interpolateTideHeight(
   return h1 + (h2 - h1) * (1 - Math.cos(Math.PI * t)) / 2;
 }
 
-export function TidesTile({ locationId, stationId }: TidesTileProps) {
-  const { tides, isLoading, error } = useTides(locationId, stationId);
+export function TidesTile({ locationId }: TidesTileProps) {
+  const { tides, isLoading, error } = useTides(locationId);
   const [hoverPos, setHoverPos] = useState<{ x: number; time: number; height: number } | null>(null);
   
   const width = 300;

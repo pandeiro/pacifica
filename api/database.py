@@ -4,7 +4,17 @@ import os
 from datetime import datetime
 from typing import AsyncGenerator
 
-from sqlalchemy import Column, DateTime, Float, Integer, Numeric, String, Text, text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
@@ -28,7 +38,7 @@ Base = declarative_base()
 
 # SQLAlchemy Models
 class Location(Base):
-    """Coastal location model."""
+    """Coastal location (Point of Interest) model."""
 
     __tablename__ = "locations"
 
@@ -39,10 +49,26 @@ class Location(Base):
     lng = Column(Numeric(9, 6), nullable=False)
     location_type = Column(Text, nullable=False)
     region = Column(Text, nullable=False)
-    noaa_station_id = Column(Text)
+    noaa_station_id = Column(Text)  # Legacy: direct station mapping
     coastline_bearing = Column(Numeric(5, 2))
     description = Column(Text)
+    show_in_dropdown = Column(Text, nullable=False, server_default=text("'true'"))
+    nearest_noaa_station_id = Column(Integer)  # FK to noaa_stations
     meta = Column("metadata", JSONB, nullable=False, server_default=text("'{}'"))
+
+
+class NOAAStation(Base):
+    """NOAA tide/water temperature station model."""
+
+    __tablename__ = "noaa_stations"
+
+    id = Column(Integer, primary_key=True)
+    station_id = Column(Text, nullable=False, unique=True)  # e.g., '9410840'
+    name = Column(Text, nullable=False)
+    lat = Column(Numeric(9, 6), nullable=False)
+    lng = Column(Numeric(9, 6), nullable=False)
+    description = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=text("NOW()"))
 
 
 class Tide(Base):
@@ -72,6 +98,7 @@ class SunEvent(Base):
     golden_hour_morning_end = Column(DateTime(timezone=True), nullable=False)
     golden_hour_evening_start = Column(DateTime(timezone=True), nullable=False)
     golden_hour_evening_end = Column(DateTime(timezone=True), nullable=False)
+    is_calculated = Column(Boolean, server_default=text("true"))
 
 
 class Condition(Base):

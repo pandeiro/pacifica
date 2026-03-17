@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db, Location, Tide, SunEvent
-from schemas import TideEvent, TidesResponse, SunEventsResponse
+from database import get_db, Location, Tide
+from schemas import TideEvent, TidesResponse
 from logging_config import get_logger
 
 router = APIRouter(prefix="/api", tags=["tides"])
@@ -52,29 +52,45 @@ def interpolate_current_height(
 
 @router.get("/tides", response_model=TidesResponse)
 async def get_tides(
-    station_id: str = Query(..., description="NOAA station ID"),
+    location_id: int = Query(..., description="Location ID"),
     hours: int = Query(48, description="Hours of data to return", ge=1, le=168),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Get tide events for a specific NOAA station.
+    Get tide events for a specific location.
 
     Returns tide events (high/low) for the requested time window,
     along with the next upcoming high and low tides, and an
     interpolated current tide height.
     """
-    logger.info("Tides endpoint called", station_id=station_id, hours=hours)
+    logger.info("Tides endpoint called", location_id=location_id, hours=hours)
 
-    # Get location info for this station (first match)
+    # Get location info
     location_result = await db.execute(
-        select(Location).where(Location.noaa_station_id == station_id).limit(1)
+        select(Location).where(Location.id == location_id)
     )
     location = location_result.scalars().first()
 
     if not location:
         raise HTTPException(
-            status_code=404, detail=f"No location found for station ID: {station_id}"
+            status_code=404, detail=f"No location found for ID: {location_id}"
         )
+
+    # Get the NOAA station ID for this location
+    from database import NOAAStation
+
+    station_result = await db.execute(
+        select(NOAAStation).where(NOAAStation.id == location.nearest_noaa_station_id)
+    )
+    station = station_result.scalars().first()
+
+    if not station:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No NOAA station found for location: {location.name}",
+        )
+
+    station_id = station.station_id
 
     # Calculate time window
     now = datetime.now(timezone.utc)
@@ -155,69 +171,4 @@ async def get_tides(
         next_high=next_high,
         current_height_ft=current_height,
         data_through=data_through,
-    )
-
-
-@router.get("/sun", response_model=SunEventsResponse)
-async def get_sun_events(
-    location_id: int = Query(..., description="Location ID from locations table"),
-    date: Optional[str] = Query(
-        None, description="Date in YYYY-MM-DD format (defaults to today)"
-    ),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Get sun events (sunrise, sunset, golden hour) for a location.
-
-    Returns sunrise, sunset, and golden hour times for the specified
-    location and date.
-    """
-    logger.info("Sun events endpoint called", location_id=location_id, date=date)
-
-    # Get location info
-    location_result = await db.execute(
-        select(Location).where(Location.id == location_id)
-    )
-    location = location_result.scalar_one_or_none()
-
-    if not location:
-        raise HTTPException(
-            status_code=404, detail=f"Location not found: {location_id}"
-        )
-
-    # Parse date or use today
-    if date:
-        try:
-            query_date = datetime.strptime(date, "%Y-%m-%d").date()
-        except ValueError:
-            raise HTTPException(
-                status_code=400, detail="Invalid date format. Use YYYY-MM-DD."
-            )
-    else:
-        query_date = datetime.now(timezone.utc).date()
-
-    # Query sun events for this location and date
-    sun_result = await db.execute(
-        select(SunEvent)
-        .where(SunEvent.location_id == location_id)
-        .where(SunEvent.date == query_date)
-    )
-    sun_event = sun_result.scalar_one_or_none()
-
-    if not sun_event:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No sun events found for location {location_id} on {query_date}",
-        )
-
-    return SunEventsResponse(
-        location_id=location_id,
-        location_name=location.name,
-        date=query_date.isoformat(),
-        sunrise=sun_event.sunrise,
-        sunset=sun_event.sunset,
-        golden_hour_morning_start=sun_event.golden_hour_morning_start,
-        golden_hour_morning_end=sun_event.golden_hour_morning_end,
-        golden_hour_evening_start=sun_event.golden_hour_evening_start,
-        golden_hour_evening_end=sun_event.golden_hour_evening_end,
     )

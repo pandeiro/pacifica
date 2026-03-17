@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import './Dashboard.css';
 import { MapTile } from './tiles/MapTile';
 import { ActivityScoresTile } from './tiles/ActivityScoresTile';
@@ -18,18 +18,7 @@ export function Dashboard() {
   const [locationId, setLocationId] = useState(DEFAULT_LOCATION_ID);
   const { locations, isLoading: locationsLoading } = useLocations();
   
-  // Derive stationId from current location
-  const stationId = useMemo(() => {
-    const location = locations.find(loc => loc.id === locationId);
-    return location?.noaa_station_id || '9410840'; // Fallback to Santa Monica
-  }, [locations, locationId]);
-
-  // Filter to locations that have data
-  const availableLocations = locations.filter(loc => 
-    ['dana_point', 'la_jolla', 'santa_monica', 'santa_barbara', 'morro_bay', 'shaws_cove', 'zuma_beach'].includes(loc.slug)
-  );
-  
-  // Get current location for station info
+  // Get current location for station info display
   const currentLocation = locations.find(loc => loc.id === locationId);
   
   return (
@@ -54,7 +43,7 @@ export function Dashboard() {
               onChange={(e) => setLocationId(Number(e.target.value))}
               disabled={locationsLoading}
             >
-              {availableLocations.map(loc => (
+              {locations.map(loc => (
                 <option key={loc.id} value={loc.id}>{loc.name}</option>
               ))}
             </select>
@@ -71,10 +60,7 @@ export function Dashboard() {
           </div>
           <SunTile locationId={locationId} />
           <WaterTempsTile locationId={locationId} />
-          <TidesTile 
-            locationId={locationId} 
-            stationId={stationId}
-          />
+          <TidesTile locationId={locationId} />
         </div>
       </div>
       

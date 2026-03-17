@@ -1,11 +1,12 @@
 """Locations API routes."""
 
 import math
-from fastapi import APIRouter, Depends
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db, Location
+from database import get_db, Location, NOAAStation
 from logging_config import get_logger
 
 router = APIRouter(prefix="/api", tags=["locations"])
@@ -45,100 +46,52 @@ def get_direction(lat1: float, lng1: float, lat2: float, lng2: float) -> str:
     return directions[index]
 
 
-# NOAA station metadata (official coordinates from NOAA API)
-NOAA_STATIONS = {
-    "9410032": {"name": "San Clemente Island", "lat": 32.8833, "lng": -118.3167},
-    "9410068": {"name": "San Nicolas Island", "lat": 33.2333, "lng": -119.5167},
-    "9410079": {"name": "Avalon, Catalina Island", "lat": 33.35, "lng": -118.3167},
-    "9410120": {"name": "Imperial Beach", "lat": 32.5833, "lng": -117.1333},
-    "9410170": {"name": "San Diego", "lat": 32.7167, "lng": -117.1667},
-    "9410230": {"name": "La Jolla", "lat": 32.8667, "lng": -117.25},
-    "9410583": {"name": "Newport Beach", "lat": 33.6, "lng": -117.8833},
-    "9410660": {"name": "Dana Point", "lat": 33.4667, "lng": -117.7},
-    "9410680": {"name": "Long Beach", "lat": 33.7667, "lng": -118.1833},
-    "9410738": {"name": "Redondo Beach", "lat": 33.85, "lng": -118.4},
-    "9410777": {"name": "El Segundo", "lat": 33.9167, "lng": -118.4333},
-    "9410840": {"name": "Santa Monica", "lat": 34.0167, "lng": -118.5},
-    "9410962": {
-        "name": "Bechers Bay, Santa Rosa Island",
-        "lat": 34.0,
-        "lng": -120.0167,
-    },
-    "9410971": {
-        "name": "Prisoners Harbor, Santa Cruz Island",
-        "lat": 34.0167,
-        "lng": -119.6833,
-    },
-    "9411065": {"name": "Port Hueneme", "lat": 34.1667, "lng": -119.4},
-    "9411189": {"name": "Ventura", "lat": 34.2667, "lng": -119.2833},
-    "9411340": {"name": "Santa Barbara", "lat": 34.4, "lng": -119.6833},
-    "9412110": {"name": "Port San Luis", "lat": 35.1689, "lng": -120.7542},
-    "9412553": {"name": "San Simeon", "lat": 35.65, "lng": -121.1833},
-}
-
-
-def get_station_info(loc, station_map):
-    """Get station info for a location, returning None if it's the same location."""
-    if not loc.noaa_station_id or loc.noaa_station_id not in station_map:
+def get_station_info(loc: Location, station: Optional[NOAAStation]) -> Optional[dict]:
+    """Get station info for a location, returning None if at the same location."""
+    if not station:
         return None
 
-    station = station_map[loc.noaa_station_id]
     distance = calculate_distance(
-        float(loc.lat), float(loc.lng), station["lat"], station["lng"]
+        float(loc.lat), float(loc.lng), float(station.lat), float(station.lng)
     )
 
-    # Only return info if there's actual distance
+    # Only return info if there's actual distance (> 0.1 miles)
     if distance < 0.1:
         return None
 
-    # Use official NOAA station name if available
-    station_name = NOAA_STATIONS.get(loc.noaa_station_id, {}).get(
-        "name", station["name"]
-    )
-
     return {
-        "name": station_name,
+        "name": station.name,
         "distance_miles": round(distance, 1),
         "direction": get_direction(
-            float(loc.lat), float(loc.lng), station["lat"], station["lng"]
+            float(loc.lat), float(loc.lng), float(station.lat), float(station.lng)
         ),
     }
 
 
 @router.get("/locations")
-async def get_locations(db: AsyncSession = Depends(get_db)):
+async def get_locations(dropdown_only: bool = True, db: AsyncSession = Depends(get_db)):
     """
-    Get all coastal locations.
+    Get coastal locations.
 
-    Returns a list of all locations in the database with their
-    metadata including coordinates, region, and station IDs.
+    Args:
+        dropdown_only: If True, only return locations that should appear in dropdown
+
+    Returns a list of locations with their metadata including coordinates,
+    region, and nearest NOAA station information.
     """
-    logger.info("Locations endpoint called")
+    logger.info("Locations endpoint called", dropdown_only=dropdown_only)
 
-    # Get all locations
-    result = await db.execute(select(Location).order_by(Location.name))
+    # Build query
+    query = select(Location).order_by(Location.name)
+    if dropdown_only:
+        query = query.where(Location.show_in_dropdown == True)
+
+    result = await db.execute(query)
     locations = result.scalars().all()
 
-    # Build a mapping of station IDs to official station coordinates
-    # Use NOAA station coordinates (not surf spot locations)
-    station_map = {}
-    for loc in locations:
-        if loc.noaa_station_id and loc.noaa_station_id not in station_map:
-            # Use official NOAA station coordinates if available
-            if loc.noaa_station_id in NOAA_STATIONS:
-                station_data = NOAA_STATIONS[loc.noaa_station_id]
-                station_map[loc.noaa_station_id] = {
-                    "name": station_data["name"],
-                    "lat": station_data["lat"],
-                    "lng": station_data["lng"],
-                }
-            else:
-                # Fallback to location coordinates for unknown stations
-                station_map[loc.noaa_station_id] = {
-                    "name": loc.name,
-                    "lat": float(loc.lat),
-                    "lng": float(loc.lng),
-                }
+    # Fetch all stations for reference
+    stations_result = await db.execute(select(NOAAStation))
+    stations = {s.id: s for s in stations_result.scalars().all()}
 
     return [
         {
@@ -150,11 +103,49 @@ async def get_locations(db: AsyncSession = Depends(get_db)):
             "location_type": loc.location_type,
             "region": loc.region,
             "noaa_station_id": loc.noaa_station_id,
+            "nearest_noaa_station_id": loc.nearest_noaa_station_id,
             "coastline_bearing": float(loc.coastline_bearing)
             if loc.coastline_bearing
             else None,
             "description": loc.description,
-            "station_info": get_station_info(loc, station_map),
+            "station_info": get_station_info(
+                loc, stations.get(loc.nearest_noaa_station_id)
+            ),
         }
         for loc in locations
     ]
+
+
+@router.get("/locations/{location_id}")
+async def get_location(location_id: int, db: AsyncSession = Depends(get_db)):
+    """Get a specific location by ID."""
+    result = await db.execute(select(Location).where(Location.id == location_id))
+    loc = result.scalars().first()
+
+    if not loc:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    # Get station info
+    station = None
+    if loc.nearest_noaa_station_id:
+        station_result = await db.execute(
+            select(NOAAStation).where(NOAAStation.id == loc.nearest_noaa_station_id)
+        )
+        station = station_result.scalars().first()
+
+    return {
+        "id": loc.id,
+        "name": loc.name,
+        "slug": loc.slug,
+        "lat": float(loc.lat),
+        "lng": float(loc.lng),
+        "location_type": loc.location_type,
+        "region": loc.region,
+        "noaa_station_id": loc.noaa_station_id,
+        "nearest_noaa_station_id": loc.nearest_noaa_station_id,
+        "coastline_bearing": float(loc.coastline_bearing)
+        if loc.coastline_bearing
+        else None,
+        "description": loc.description,
+        "station_info": get_station_info(loc, station),
+    }
