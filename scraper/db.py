@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from api.database import Location, Tide, SunEvent, Condition, Base
+from api.database import Location, Tide, SunEvent, Condition, Sighting, Base
 
 # Database URL from environment
 DATABASE_URL = os.getenv(
@@ -216,3 +216,105 @@ async def check_duplicate_dive_report(
             return True
 
     return False
+
+
+from math import radians, sin, cos, sqrt, atan2
+
+
+def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate the great-circle distance between two points in miles.
+
+    Args:
+        lat1, lon1: First point coordinates (decimal degrees)
+        lat2, lon2: Second point coordinates (decimal degrees)
+
+    Returns:
+        Distance in miles
+    """
+    R = 3958.8  # Earth's radius in miles
+
+    lat1_rad = radians(lat1)
+    lat2_rad = radians(lat2)
+    delta_lat = radians(lat2 - lat1)
+    delta_lon = radians(lon2 - lon1)
+
+    a = (
+        sin(delta_lat / 2) ** 2
+        + cos(lat1_rad) * cos(lat2_rad) * sin(delta_lon / 2) ** 2
+    )
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    return R * c
+
+
+async def find_nearest_location(
+    session: AsyncSession, lat: float, lng: float, max_distance_miles: float = 30.0
+) -> tuple[Optional[int], Optional[str]]:
+    """Find the nearest location within max_distance_miles using haversine formula.
+
+    Args:
+        session: Database session
+        lat: Observation latitude
+        lng: Observation longitude
+        max_distance_miles: Maximum distance to search (default30 miles)
+
+    Returns:
+        Tuple of (location_id, place_guess) where place_guess is None if location found
+    """
+    locations = await get_locations(session)
+
+    nearest_location = None
+    nearest_distance = float("inf")
+
+    for location in locations:
+        distance = haversine_distance(
+            lat, float(lng), float(location.lat), float(location.lng)
+        )
+        if distance < nearest_distance:
+            nearest_distance = distance
+            nearest_location = location
+
+    if nearest_location and nearest_distance <= max_distance_miles:
+        return nearest_location.id, None
+
+    return None, None
+
+
+async def insert_sightings(session: AsyncSession, records: List[Dict[str, Any]]):
+    """Insert sighting records into the database.
+
+    Uses upsert logic based on the UNIQUE index on (source, source_url, timestamp).
+    If a record with the same combination exists, it updates other fields.
+    """
+    for record in records:
+        existing = await session.execute(
+            select(Sighting).where(
+                Sighting.source == record["source"],
+                Sighting.source_url == record["source_url"],
+                Sighting.timestamp == record["timestamp"],
+            )
+        )
+        existing_sighting = existing.scalar_one_or_none()
+
+        if existing_sighting:
+            existing_sighting.location_id = record.get("location_id")
+            existing_sighting.species = record["species"]
+            existing_sighting.count = record.get("count")
+            existing_sighting.confidence = record.get("confidence", "medium")
+            existing_sighting.raw_text = record.get("raw_text")
+            existing_sighting.meta = record.get("metadata", {})
+        else:
+            sighting = Sighting(
+                timestamp=record["timestamp"],
+                location_id=record.get("location_id"),
+                species=record["species"],
+                count=record.get("count"),
+                source=record["source"],
+                source_url=record.get("source_url"),
+                raw_text=record.get("raw_text"),
+                confidence=record.get("confidence", "medium"),
+                meta=record.get("metadata", {}),
+            )
+            session.add(sighting)
+
+    await session.flush()

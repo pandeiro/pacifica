@@ -120,6 +120,23 @@ class Condition(Base):
     meta = Column("metadata", JSONB, nullable=False, server_default=text("'{}'"))
 
 
+class Sighting(Base):
+    """Wildlife sighting model."""
+
+    __tablename__ = "sightings"
+
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime(timezone=True), nullable=False)
+    location_id = Column(Integer, nullable=True)  # nullable for sightings outside30mi
+    species = Column(Text, nullable=False)
+    count = Column(Integer, nullable=True)
+    source = Column(Text, nullable=False)
+    source_url = Column(Text, nullable=True)
+    raw_text = Column(Text, nullable=True)
+    confidence = Column(Text, nullable=False, server_default=text("'medium'"))
+    meta = Column("metadata", JSONB, nullable=False, server_default=text("'{}'"))
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Dependency to get database session."""
     async with AsyncSessionLocal() as session:
