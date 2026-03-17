@@ -298,6 +298,34 @@ Returns a broad, recent sightings feed intended for client-side filtering.
 | "pelican", "tern", "albatross", "cormorant", "shearwater", "murre", "puffin" | `"bird"` |
 | anything else | `"other"` |
 
+**Species canonicalization**: Source data contains inconsistencies (typos, plural/singular, case variations, regional spellings). Implement API-layer normalization:
+
+1. Create `CANONICAL_SPECIES` dict mapping raw strings to canonical names:
+   ```python
+   CANONICAL_SPECIES = {
+       # Plural/singular
+       "gray whales": "Gray Whale",
+       "gray whale": "Gray Whale",
+       "grey whale": "Gray Whale",
+       "grey whales": "Gray Whale",
+       # Typos from source data
+       "botllenose dolphin": "Bottlenose Dolphin",
+       "bottlenose dolphins": "Bottlenose Dolphin",
+       "common dolphin": "Common Dolphin",
+       "common dolphins": "Common Dolphin",
+       # Compound species
+       "pacific white sided dolphin": "Pacific White-Sided Dolphin",
+       "pacific white-sided dolphin": "Pacific White-Sided Dolphin",
+       # ... etc
+   }
+   ```
+
+2. Store raw `species` from source (preserves original data for debugging).
+
+3. In API response, add `canonical_species` field (normalized) alongside raw `species`.
+
+4. Emoji mapping in frontend (`speciesEmoji.ts`) uses `canonical_species` (lowercase).
+
 ---
 
 ## 5. Wildlife Intel Frontend Tile (Card 25)

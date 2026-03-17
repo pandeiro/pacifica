@@ -36,7 +36,7 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 - [ ] **Card 18b: ACS-LA Gray Whale Census Scraper** — HTML + Facebook feed widget, LLM extraction, seasonal (Dec–May)
 - [ ] **Card 18c: Whale Alert Scraper** — REST API, free API key required (whale-alert.io)
 - [ ] **Card 19: Harbor Breeze Scraper** — Playwright headless, narrative → LLM extraction
-- [ ] **Card 20: Davey's Locker Scraper** — Plain HTML table, regex parse, daily
+- [x] **Card 20: Davey's Locker Scraper** — Plain HTML table, regex parse, daily
 - [ ] **Card 21: Dana Wharf Scraper** — Playwright headless, inspect DOM before writing parser
 - [ ] **Card 22: Island Packers Scraper** — Playwright headless, Channel Islands coverage
 - [ ] **Card 23: Nitter/Twitter Scrapers** — Research accounts first; NITTER_API_URL env var, LLM extraction
