@@ -5,7 +5,8 @@ Scrapers use the same SQLAlchemy models as the API for consistency.
 
 import os
 from contextlib import asynccontextmanager
-from typing import List, Dict, Any
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -141,3 +142,44 @@ async def insert_conditions(session: AsyncSession, records: List[Dict[str, Any]]
         session.add(condition)
 
     await session.flush()
+
+
+async def get_location_by_slug(session: AsyncSession, slug: str) -> Optional[Location]:
+    """Fetch a location by its slug."""
+    result = await session.execute(
+        select(Location).where(Location.slug == slug)
+    )
+    return result.scalar_one_or_none()
+
+
+async def check_duplicate_dive_report(
+    session: AsyncSession,
+    location_id: int,
+    raw_text: str,
+    hours: int = 96
+) -> bool:
+    """Check if a dive report with the same content exists within the specified hours.
+    
+    Returns True if a duplicate is found, False otherwise.
+    """
+    # Calculate the cutoff time
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+    
+    # Check for existing record with same content
+    result = await session.execute(
+        select(Condition).where(
+            Condition.location_id == location_id,
+            Condition.condition_type == 'dive_report',
+            Condition.source == 'south_coast_divers',
+            Condition.timestamp >= cutoff,
+        ).order_by(Condition.timestamp.desc())
+    )
+    
+    existing = result.scalars().all()
+    
+    # Check if any existing record has the same content
+    for record in existing:
+        if record.raw_text == raw_text:
+            return True
+    
+    return False
