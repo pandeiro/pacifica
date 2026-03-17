@@ -41,21 +41,20 @@ services:
   # Scraper Service
   scraper:
     build:
-      context: ./scraper
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: scraper/Dockerfile
     container_name: pacifica-scraper
     environment:
       DATABASE_URL: postgresql+asyncpg://pacifica:password@postgres:5432/pacifica
       ENVIRONMENT: development
     volumes:
-      - ./scraper:/app
+      - ./scraper:/app/scraper
+      - ./api:/app/api
     networks:
       - pacifica
     depends_on:
       postgres:
         condition: service_healthy
-    profiles:
-      - scraper
     restart: unless-stopped
 
 volumes:

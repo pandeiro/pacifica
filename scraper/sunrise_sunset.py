@@ -7,27 +7,16 @@ import httpx
 import sys
 import os
 
-# Add the parent directory to the path so we can import base
+# Add the parent directory to the path so we can import base and db
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from scraper.base import BaseScraper
+    from base import BaseScraper
+    from db import get_db_session, get_locations, insert_sun_events
 except ImportError:
     # Fallback for standalone execution
-    from base import BaseScraper
-
-
-# Locations with lat/lng coordinates (matches database locations table)
-# These are the southern California coastal locations we track
-LOCATIONS = [
-    {"id": 1, "slug": "dana_point", "lat": 33.467500, "lng": -117.698600},
-    {"id": 2, "slug": "la_jolla", "lat": 32.866700, "lng": -117.250000},
-    {"id": 3, "slug": "santa_monica", "lat": 34.011700, "lng": -118.496500},
-    {"id": 4, "slug": "santa_barbara", "lat": 34.400000, "lng": -119.697000},
-    {"id": 5, "slug": "morro_bay", "lat": 35.367000, "lng": -120.851000},
-    {"id": 12, "slug": "shaws_cove", "lat": 33.545800, "lng": -117.802500},
-    {"id": 13, "slug": "zuma_beach", "lat": 34.020800, "lng": -118.828900},
-]
+    from scraper.base import BaseScraper
+    from scraper.db import get_db_session, get_locations, insert_sun_events
 
 
 class SunriseSunsetScraper(BaseScraper):
@@ -42,6 +31,16 @@ class SunriseSunsetScraper(BaseScraper):
         """Fetch and process sun events from sunrise-sunset.org API."""
         print(f"[{self.name}] Starting scrape...")
 
+        # Fetch locations from database
+        async with get_db_session() as session:
+            locations = await get_locations(session)
+
+        if not locations:
+            print(f"[{self.name}] No locations found in database!")
+            return []
+
+        print(f"[{self.name}] Found {len(locations)} locations to process")
+
         # Calculate date range: today + next 7 days = 8 days total
         today = datetime.utcnow().date()
         end_date = today + timedelta(days=7)
@@ -49,38 +48,52 @@ class SunriseSunsetScraper(BaseScraper):
         all_records = []
 
         # Fetch data for each location
-        for location in LOCATIONS:
+        for location in locations:
             try:
+                # Convert Decimal lat/lng to float for API
+                lat = float(location.lat)
+                lng = float(location.lng)
+
                 print(
-                    f"[{self.name}] Fetching sun events for {location['slug']} (lat: {location['lat']}, lng: {location['lng']})"
+                    f"[{self.name}] Fetching sun events for {location.slug} (lat: {lat}, lng: {lng})"
                 )
 
                 # Fetch sun events for all days
                 records = await self._fetch_location_sun_events(
-                    location, today, end_date
+                    location.id, location.slug, lat, lng, today, end_date
                 )
                 all_records.extend(records)
 
                 print(
-                    f"[{self.name}] Retrieved {len(records)} sun events for {location['slug']}"
+                    f"[{self.name}] Retrieved {len(records)} sun events for {location.slug}"
                 )
 
                 # Be polite - add a small delay between locations
                 await asyncio.sleep(0.5)
 
             except Exception as e:
-                print(f"[{self.name}] Error fetching data for {location['slug']}: {e}")
+                print(f"[{self.name}] Error fetching data for {location.slug}: {e}")
                 # Continue with other locations even if one fails
                 continue
 
+        # Persist to database
+        if all_records:
+            print(f"[{self.name}] Persisting {len(all_records)} records to database...")
+            async with get_db_session() as session:
+                await insert_sun_events(session, all_records)
+            print(f"[{self.name}] Successfully persisted {len(all_records)} records")
+
         print(
-            f"[{self.name}] Scraped {len(all_records)} sun events from {len(LOCATIONS)} locations"
+            f"[{self.name}] Scraped {len(all_records)} sun events from {len(locations)} locations"
         )
         return all_records
 
     async def _fetch_location_sun_events(
         self,
-        location: Dict[str, Any],
+        location_id: int,
+        location_slug: str,
+        lat: float,
+        lng: float,
         start_date: datetime.date,
         end_date: datetime.date,
     ) -> List[Dict[str, Any]]:
@@ -91,14 +104,14 @@ class SunriseSunsetScraper(BaseScraper):
         while current_date <= end_date:
             url = "https://api.sunrise-sunset.org/json"
             params = {
-                "lat": location["lat"],
-                "lng": location["lng"],
+                "lat": lat,
+                "lng": lng,
                 "date": current_date.isoformat(),
                 "formatted": 0,  # Return ISO 8601 timestamps in UTC
             }
 
             print(
-                f"[{self.name}] Requesting sun events for {location['slug']} on {current_date}"
+                f"[{self.name}] Requesting sun events for {location_slug} on {current_date}"
             )
 
             async with httpx.AsyncClient() as client:
@@ -109,7 +122,7 @@ class SunriseSunsetScraper(BaseScraper):
 
                 if data.get("status") != "OK":
                     print(
-                        f"[{self.name}] API returned non-OK status for {location['slug']} on {current_date}: {data.get('status')}"
+                        f"[{self.name}] API returned non-OK status for {location_slug} on {current_date}: {data.get('status')}"
                     )
                     current_date += timedelta(days=1)
                     continue
@@ -132,7 +145,7 @@ class SunriseSunsetScraper(BaseScraper):
                 # Evening golden hour: sunset -> civil twilight end
                 record = {
                     "date": current_date,
-                    "location_id": location["id"],
+                    "location_id": location_id,
                     "sunrise": sunrise,
                     "sunset": sunset,
                     "golden_hour_morning_start": civil_twilight_begin,

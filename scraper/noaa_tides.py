@@ -2,29 +2,25 @@
 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Any
+from typing import List, Any
 import httpx
 import sys
 import os
 
-# Add the parent directory to the path so we can import base
+# Add the parent directory to the path so we can import base and db
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from scraper.base import BaseScraper
+    from base import BaseScraper
+    from db import get_db_session, get_locations_with_noaa_stations, insert_tides
 except ImportError:
     # Fallback for standalone execution
-    from base import BaseScraper
-
-
-# NOAA CO-OPS Station IDs mapped to location slugs
-STATIONS = {
-    "9410660": "dana_point",
-    "9410230": "la_jolla",
-    "9410840": "santa_monica",
-    "9411340": "santa_barbara",
-    "9412110": "morro_bay",
-}
+    from scraper.base import BaseScraper
+    from scraper.db import (
+        get_db_session,
+        get_locations_with_noaa_stations,
+        insert_tides,
+    )
 
 
 class NOAATidesScraper(BaseScraper):
@@ -34,12 +30,20 @@ class NOAATidesScraper(BaseScraper):
 
     def __init__(self):
         super().__init__("noaa_tides")
-        # Use the shared httpx client from BaseScraper if available
-        # Otherwise create a new one
 
-    async def scrape(self) -> List[Dict[str, Any]]:
+    async def scrape(self) -> List[Any]:
         """Fetch and process tide data from NOAA CO-OPS API."""
         print(f"[{self.name}] Starting scrape...")
+
+        # Fetch locations with NOAA stations from database
+        async with get_db_session() as session:
+            locations = await get_locations_with_noaa_stations(session)
+
+        if not locations:
+            print(f"[{self.name}] No locations with NOAA stations found in database!")
+            return []
+
+        print(f"[{self.name}] Found {len(locations)} locations with NOAA stations")
 
         # Calculate date range for predictions (today - 1 day to today + 6 days)
         # This gives us a week of data centered around today
@@ -50,10 +54,11 @@ class NOAATidesScraper(BaseScraper):
         all_records = []
 
         # Fetch data for each station
-        for station_id in STATIONS:
+        for location in locations:
+            station_id = location.noaa_station_id
             try:
                 print(
-                    f"[{self.name}] Fetching data for station {station_id} ({STATIONS[station_id]})"
+                    f"[{self.name}] Fetching data for station {station_id} ({location.slug})"
                 )
 
                 # Fetch predictions
@@ -76,14 +81,21 @@ class NOAATidesScraper(BaseScraper):
                 # Continue with other stations even if one fails
                 continue
 
+        # Persist to database
+        if all_records:
+            print(f"[{self.name}] Persisting {len(all_records)} records to database...")
+            async with get_db_session() as session:
+                await insert_tides(session, all_records)
+            print(f"[{self.name}] Successfully persisted {len(all_records)} records")
+
         print(
-            f"[{self.name}] Scraped {len(all_records)} tide events from {len(STATIONS)} stations"
+            f"[{self.name}] Scraped {len(all_records)} tide events from {len(locations)} stations"
         )
         return all_records
 
     async def _fetch_predictions(
         self, station_id: str, start_date: datetime.date, end_date: datetime.date
-    ) -> List[Dict[str, str]]:
+    ) -> List[Any]:
         """Fetch tide predictions for a specific station."""
         url = (
             "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
@@ -103,8 +115,8 @@ class NOAATidesScraper(BaseScraper):
             return data.get("predictions", [])
 
     def _process_predictions(
-        self, station_id: str, predictions: List[Dict[str, str]]
-    ) -> List[Dict[str, Any]]:
+        self, station_id: str, predictions: List[Any]
+    ) -> List[Any]:
         """Process raw predictions into standardized records."""
         records = []
 
