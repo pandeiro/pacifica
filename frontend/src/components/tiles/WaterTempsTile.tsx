@@ -36,22 +36,13 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
     );
   }
 
-  const { current_temp_f, current_temp_c, history, source } = data;
+  const { current_temp_f, current_temp_c, history } = data;
 
   // Generate sparkline data from history (show last 48 points max for visual clarity)
   const sparklineData = history.slice(0, 48).reverse();
   const maxTemp = Math.max(...sparklineData.map(d => d.temperature_f));
   const minTemp = Math.min(...sparklineData.map(d => d.temperature_f));
   const tempRange = maxTemp - minTemp || 1;
-
-  // Format source name nicely
-  const formatSource = (src: string | null) => {
-    if (!src) return '';
-    if (src.startsWith('noaa_')) {
-      return `NOAA ${src.replace('noaa_', '')}`;
-    }
-    return src;
-  };
 
   // Format time for hover display
   const formatTime = (timestamp: string) => {
@@ -112,11 +103,7 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
           </div>
         )}
 
-        {source && (
-          <div className="water-temps__source">
-            {formatSource(source)}
-          </div>
-        )}
+
       </div>
     </div>
   );
