@@ -7,6 +7,7 @@ from logging_config import configure_logging, get_logger
 from routes.tides import router as tides_router
 from routes.locations import router as locations_router
 from routes.conditions import router as conditions_router
+from routes.sun_events import router as sun_events_router
 
 # Configure logging on startup
 configure_logging()
@@ -29,6 +30,7 @@ app.add_middleware(
 app.include_router(tides_router)
 app.include_router(locations_router)
 app.include_router(conditions_router)
+app.include_router(sun_events_router)
 
 
 @app.get("/api/health")

@@ -63,19 +63,36 @@ async def get_locations_with_noaa_stations(session: AsyncSession) -> List[Locati
 async def insert_tides(session: AsyncSession, records: List[Dict[str, Any]]):
     """Insert tide records into the database.
 
-    Uses ON CONFLICT DO NOTHING to handle duplicate entries gracefully.
+    Uses merge/upsert logic to handle duplicate entries gracefully.
+    If a record with the same (timestamp, station_id, type) exists,
+    it updates the height_ft and source values.
     """
     for record in records:
-        tide = Tide(
-            timestamp=record["timestamp"],
-            station_id=record["station_id"],
-            type=record["type"],
-            height_ft=record["height_ft"],
-            source=record.get("source", "noaa"),
+        # Check if record exists
+        existing = await session.execute(
+            select(Tide).where(
+                Tide.timestamp == record["timestamp"],
+                Tide.station_id == record["station_id"],
+                Tide.type == record["type"],
+            )
         )
-        session.add(tide)
+        existing_tide = existing.scalar_one_or_none()
 
-    # Flush to generate SQL and handle conflicts
+        if existing_tide:
+            # Update existing record
+            existing_tide.height_ft = record["height_ft"]
+            existing_tide.source = record.get("source", "noaa")
+        else:
+            # Create new record
+            tide = Tide(
+                timestamp=record["timestamp"],
+                station_id=record["station_id"],
+                type=record["type"],
+                height_ft=record["height_ft"],
+                source=record.get("source", "noaa"),
+            )
+            session.add(tide)
+
     await session.flush()
 
 
@@ -146,40 +163,37 @@ async def insert_conditions(session: AsyncSession, records: List[Dict[str, Any]]
 
 async def get_location_by_slug(session: AsyncSession, slug: str) -> Optional[Location]:
     """Fetch a location by its slug."""
-    result = await session.execute(
-        select(Location).where(Location.slug == slug)
-    )
+    result = await session.execute(select(Location).where(Location.slug == slug))
     return result.scalar_one_or_none()
 
 
 async def check_duplicate_dive_report(
-    session: AsyncSession,
-    location_id: int,
-    raw_text: str,
-    hours: int = 96
+    session: AsyncSession, location_id: int, raw_text: str, hours: int = 96
 ) -> bool:
     """Check if a dive report with the same content exists within the specified hours.
-    
+
     Returns True if a duplicate is found, False otherwise.
     """
     # Calculate the cutoff time
     cutoff = datetime.utcnow() - timedelta(hours=hours)
-    
+
     # Check for existing record with same content
     result = await session.execute(
-        select(Condition).where(
+        select(Condition)
+        .where(
             Condition.location_id == location_id,
-            Condition.condition_type == 'dive_report',
-            Condition.source == 'south_coast_divers',
+            Condition.condition_type == "dive_report",
+            Condition.source == "south_coast_divers",
             Condition.timestamp >= cutoff,
-        ).order_by(Condition.timestamp.desc())
+        )
+        .order_by(Condition.timestamp.desc())
     )
-    
+
     existing = result.scalars().all()
-    
+
     # Check if any existing record has the same content
     for record in existing:
         if record.raw_text == raw_text:
             return True
-    
+
     return False

@@ -6,6 +6,7 @@ from typing import List, Any
 import httpx
 import sys
 import os
+from zoneinfo import ZoneInfo
 
 # Add the parent directory to the path so we can import base and db
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -52,17 +53,29 @@ class NOAATidesScraper(BaseScraper):
         end_date = today + timedelta(days=6)
 
         all_records = []
+        processed_stations = set()
 
-        # Fetch data for each station
+        # Fetch data for each station (deduplicate since multiple locations may share the same station)
         for location in locations:
             station_id = location.noaa_station_id
+
+            # Skip if we've already processed this station
+            if station_id in processed_stations:
+                print(
+                    f"[{self.name}] Skipping duplicate station {station_id} ({location.slug}) - already processed"
+                )
+                continue
+
+            processed_stations.add(station_id)
             try:
                 print(
                     f"[{self.name}] Fetching data for station {station_id} ({location.slug})"
                 )
 
                 # Fetch predictions
-                predictions = await self._fetch_predictions(station_id, today, end_date)
+                predictions = await self._fetch_predictions(
+                    station_id, start_date, end_date
+                )
                 print(
                     f"[{self.name}] Retrieved {len(predictions)} predictions for station {station_id}"
                 )
@@ -101,7 +114,7 @@ class NOAATidesScraper(BaseScraper):
             "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
             f"?product=predictions&station={station_id}"
             f"&begin_date={start_date.strftime('%Y%m%d')}&end_date={end_date.strftime('%Y%m%d')}"
-            "&datum=MLLW&time_zone=lst&interval=hilo&units=english"
+            "&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english"
             "&application=pacific_dashboard&format=json"
         )
 
@@ -120,12 +133,17 @@ class NOAATidesScraper(BaseScraper):
         """Process raw predictions into standardized records."""
         records = []
 
+        # Pacific timezone for NOAA stations (all SoCal stations are in America/Los_Angeles)
+        pacific_tz = ZoneInfo("America/Los_Angeles")
+
         for prediction in predictions:
             # Convert time string to datetime object
             timestamp_str = prediction["t"]
             timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M")
-            # Assume timestamps from NOAA are in UTC (they come back with LST/LDT but we'll standardize to UTC)
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
+            # NOAA returns times in local station time (LST/LDT) when using time_zone=lst
+            # We need to attach the Pacific timezone, then convert to UTC for storage
+            timestamp = timestamp.replace(tzinfo=pacific_tz)
+            timestamp_utc = timestamp.astimezone(timezone.utc)
 
             # Convert height to float
             height_ft = float(prediction["v"])
@@ -141,7 +159,7 @@ class NOAATidesScraper(BaseScraper):
             )
 
             record = {
-                "timestamp": timestamp,
+                "timestamp": timestamp_utc,
                 "station_id": station_id,
                 "type": tide_type,
                 "height_ft": height_ft,

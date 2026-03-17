@@ -59,7 +59,12 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
       <div className="tile__header">
         <div className="tile__title">Water Temp</div>
       </div>
-      
+      {data?.station_info && (
+        <div className="tile__subtitle">
+          {data.station_info.name} ({data.station_info.distance_miles} mi {data.station_info.direction})
+        </div>
+      )}
+
       <div className="tile__content">
         <div className="water-temps__display">
           {current_temp_f ? (

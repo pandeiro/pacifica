@@ -17,6 +17,18 @@ class TideEvent(BaseModel):
         from_attributes = True
 
 
+class StationInfo(BaseModel):
+    """Information about the data source station."""
+
+    name: str
+    station_id: str
+    distance_miles: float
+    direction: str
+
+    class Config:
+        from_attributes = True
+
+
 class TidesResponse(BaseModel):
     """Response model for tides endpoint."""
 
@@ -27,6 +39,7 @@ class TidesResponse(BaseModel):
     next_high: Optional[TideEvent] = None
     current_height_ft: Optional[float] = None
     data_through: datetime
+    station_info: Optional[StationInfo] = None
 
     class Config:
         from_attributes = True
@@ -74,6 +87,7 @@ class WaterTemperatureResponse(BaseModel):
     history: list[WaterTemperatureReading]
     hours_requested: int
     readings_count: int
+    station_info: Optional[StationInfo] = None
 
     class Config:
         from_attributes = True

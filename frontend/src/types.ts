@@ -63,6 +63,13 @@ export interface LiveCam {
 }
 
 // API Response Types
+export interface StationInfo {
+  name: string;
+  station_id: string;
+  distance_miles: number;
+  direction: string;
+}
+
 export interface TideEvent {
   timestamp: string;
   type: 'high' | 'low' | 'predicted';
@@ -77,6 +84,7 @@ export interface TidesResponse {
   next_high: TideEvent | null;
   current_height_ft: number | null;
   data_through: string;
+  station_info?: StationInfo;
 }
 
 export interface SunEventsResponse {
@@ -109,4 +117,5 @@ export interface WaterTemperatureResponse {
   history: WaterTemperatureReading[];
   hours_requested: number;
   readings_count: number;
+  station_info?: StationInfo;
 }

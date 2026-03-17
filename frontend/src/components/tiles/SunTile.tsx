@@ -7,12 +7,13 @@ interface SunTileProps {
 
 function formatTime(isoString: string): string {
   const date = new Date(isoString);
-  return date.toLocaleTimeString('en-US', { 
+  const time = date.toLocaleTimeString('en-US', { 
     hour: 'numeric', 
     minute: '2-digit',
     hour12: true,
     timeZone: 'America/Los_Angeles'
-  }).toLowerCase();
+  });
+  return time.replace(/\s*[ap]m/i, '');
 }
 
 export function SunTile({ locationId }: SunTileProps) {

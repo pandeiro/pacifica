@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 
+export interface StationInfo {
+  name: string;
+  distance_miles: number;
+  direction: string;
+}
+
 export interface Location {
   id: number;
   name: string;
@@ -11,6 +17,7 @@ export interface Location {
   noaa_station_id: string | null;
   coastline_bearing: number | null;
   description: string;
+  station_info?: StationInfo;
 }
 
 interface UseLocationsReturn {

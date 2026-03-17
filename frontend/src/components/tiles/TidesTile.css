@@ -90,6 +90,13 @@
   stroke-dasharray: 4 4;
 }
 
+.tide-curve__hover-point {
+  fill: var(--glow-cyan);
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 1;
+  filter: drop-shadow(0 0 4px var(--glow-cyan));
+}
+
 .tide-curve__overlay {
   position: absolute;
   inset: 0;
