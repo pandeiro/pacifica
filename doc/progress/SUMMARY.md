@@ -33,3 +33,4 @@ Infrastructure improvements: Unified docker-compose.yml for local/prod, removed 
 [17c] Station Source Transparency: Added tide station info below location dropdown showing actual NOAA station name, distance and direction from selected surf spot. Explains tide time discrepancies (e.g., Morro Bay uses Port San Luis station, 14.7 miles away). Added official NOAA station coordinates to API.
 Roadmap update: Marked Epic 1 cards (06-09) as skipped, marked Cards 16, 17, 17b, 17c as complete
 [17d] Water temp bug fix: Fixed duplicate records causing double bars in sparkline. Added upsert logic to insert_conditions() and DISTINCT to API query. Current temp now correctly shows most recent value.
+[Slice C kickoff] Wildlife Sightings spec written: doc/ref/wildlife_slice.md. Roadmap updated with 11 cards (23a, 18, 18b, 18c, 19-23, 24, 25). Env vars documented for OLLAMA_API_URL, LLM_MODEL, WHALE_ALERT_API_KEY, NITTER_API_URL.
