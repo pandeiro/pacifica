@@ -24,7 +24,7 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 
 ## 3. Slice B — Conditions
 - [x] **Card 14: NOAA Water Temp Scraper**
-- [ ] **Card 15: South Coast Divers Scraper**
+- [x] **Card 15: South Coast Divers Scraper**
 - [ ] **Card 16: Conditions API Endpoint**
 - [ ] **Card 17: Conditions Frontend Tile**
 
