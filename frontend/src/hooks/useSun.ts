@@ -19,11 +19,27 @@ export function useSun(locationId: number): UseSunReturn {
     setError(null);
     
     try {
-      const sunRes = await fetch(`${API_URL}/api/sun?location_id=${locationId}`);
+      const sunRes = await fetch(`${API_URL}/api/sun-events?location_id=${locationId}&days=3`);
       
       if (sunRes.ok) {
         const sunData = await sunRes.json();
-        setSun(sunData);
+        // Transform new API format to match expected format
+        if (sunData.events && sunData.events.length > 0) {
+          const today = sunData.events[0];
+          setSun({
+            location_id: sunData.location_id,
+            location_name: sunData.location_name,
+            date: today.date,
+            sunrise: today.sunrise,
+            sunset: today.sunset,
+            golden_hour_morning_start: today.golden_hour.morning.start,
+            golden_hour_morning_end: today.golden_hour.morning.end,
+            golden_hour_evening_start: today.golden_hour.evening.start,
+            golden_hour_evening_end: today.golden_hour.evening.end,
+          });
+        } else {
+          setSun(null);
+        }
       } else {
         setSun(null);
       }
