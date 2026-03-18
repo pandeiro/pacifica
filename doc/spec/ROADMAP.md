@@ -34,12 +34,12 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 ## 4. Slice C — Wildlife Sightings
 - [x] **Card 23a: LLM Client Infrastructure** — `scraper/llm.py`, Ollama/OpenAI-compat wrapper, env vars; prerequisite for 18b, 19, 23
 - [x] **Card 18: iNaturalist Scraper** — REST API, 30-min schedule, haversine location resolution
-- [ ] **Card 18b: ACS-LA Gray Whale Census Scraper** — HTML + Facebook feed widget, LLM extraction, seasonal (Dec–May)
-- [ ] **Card 18c: Whale Alert Scraper** — REST API, free API key required (whale-alert.io)
-- [ ] **Card 19: Harbor Breeze Scraper** — Playwright headless, narrative → LLM extraction
+- [x] **Card 18b: ACS-LA Gray Whale Census Scraper** — HTML + Facebook feed widget, regex extraction for TODAY counts, seasonal (Dec–May)
+- [ ] **Card 18c: Whale Alert Scraper** — BLOCKED: whale-alert.io is crypto service; whalealert.org requires data access agreement (contact info@whalealert.org)
 - [x] **Card 20: Davey's Locker Scraper** — Plain HTML table, regex parse, daily
-- [ ] **Card 21: Dana Wharf Scraper** — Playwright headless, inspect DOM before writing parser
-- [ ] **Card 22: Island Packers Scraper** — Playwright headless, Channel Islands coverage
+- [x] **Card 21: Dana Wharf Scraper** — Public Google Sheet CSV export, regex parse, daily
+- [x] **Card 22: Island Packers Scraper** — Public Google Sheet CSV export, structured daily counts
+- [x] **Card 19: Harbor Breeze Scraper** — Playwright headless, JetEngine dynamic content, Long Beach
 - [ ] **Card 23: Nitter/Twitter Scrapers** — Research accounts first; NITTER_API_URL env var, LLM extraction
 - [ ] **Card 24: Sightings API Endpoint** — `GET /api/sightings`, taxon_group derivation server-side
 - [ ] **Card 25: Wildlife Intelligence Frontend Tile** — Filter pills, source badges, 15-min poll, type updates
