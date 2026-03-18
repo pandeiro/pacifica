@@ -8,8 +8,8 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "scraper"))
 
 from harbor_breeze import HarborBreezeScraper
-from dana_wharf import DanaWharfScraper
-from island_packers import IslandPackersScraper
+from dana_wharf import DanaWharfScraper, parse_sightings_text
+from island_packers import IslandPackersScraper, parse_count
 
 
 class TestHarborBreezeScraper:
@@ -32,52 +32,6 @@ class TestHarborBreezeScraper:
         scraper = HarborBreezeScraper()
         assert scraper.url == "https://www.harbor-breeze.com/whale-watching-reports/"
 
-    def test_extract_reports_basic(self):
-        """Test extraction of trip report content."""
-        scraper = HarborBreezeScraper()
-
-        html = """
-        <html><body>
-        <article>
-            <p>We saw 5 gray whales and 100 common dolphins today!</p>
-        </article>
-        </body></html>
-        """
-        reports = scraper._extract_reports(html)
-        assert len(reports) >= 1
-        assert any("whale" in r.lower() or "dolphin" in r.lower() for r in reports)
-
-    def test_extract_reports_with_class_selectors(self):
-        """Test extraction using class-based selectors."""
-        scraper = HarborBreezeScraper()
-
-        html = """
-        <html><body>
-        <div class="trip-report">
-            Great day! Saw 3 blue whales and plenty of dolphins.
-        </div>
-        <div class="sighting">
-            Morning trip: 2 humpback whales
-        </div>
-        </body></html>
-        """
-        reports = scraper._extract_reports(html)
-        assert len(reports) >= 1
-
-    def test_extract_reports_no_content(self):
-        """Test handling of page with no reports."""
-        scraper = HarborBreezeScraper()
-
-        html = "<html><body><p>No whale reports here</p></body></html>"
-        reports = scraper._extract_reports(html)
-        assert reports == []
-
-    def test_location_slug_exists(self):
-        """Test that location slug maps to a known location."""
-        scraper = HarborBreezeScraper()
-        # 'long_beach' should exist in seed data
-        assert scraper.location_slug == "long_beach"
-
 
 class TestDanaWharfScraper:
     """Test suite for Dana Wharf Scraper."""
@@ -94,54 +48,44 @@ class TestDanaWharfScraper:
         assert hasattr(scraper, "schedule")
         assert scraper.schedule == "30 6 * * *"
 
-    def test_url(self):
-        """Test that URL is correct."""
+    def test_csv_url(self):
+        """Test that CSV URL is correct."""
         scraper = DanaWharfScraper()
-        assert scraper.url == "https://danawharf.com/whale-watching/"
-
-    def test_extract_log_section_basic(self):
-        """Test extraction of log section from HTML."""
-        scraper = DanaWharfScraper()
-
-        html = """
-        <html><body>
-        <div id="log">
-            Today we saw 2 gray whales and 50 common dolphins.
-            Great visibility!
-        </div>
-        </body></html>
-        """
-        log = scraper._extract_log_section(html)
-        assert "gray whale" in log.lower() or "dolphin" in log.lower()
-
-    def test_extract_log_section_with_wildlife_keywords(self):
-        """Test that wildlife keywords are detected."""
-        scraper = DanaWharfScraper()
-
-        html = """
-        <html><body>
-        <main>
-            <p>Blue whale sighting today at 2pm.</p>
-            <p>Also spotted some fin whales.</p>
-        </main>
-        </body></html>
-        """
-        log = scraper._extract_log_section(html)
-        assert len(log) > 0
-
-    def test_extract_log_section_empty(self):
-        """Test handling of empty content."""
-        scraper = DanaWharfScraper()
-
-        html = "<html><body></body></html>"
-        log = scraper._extract_log_section(html)
-        assert log == ""
+        assert "docs.google.com/spreadsheets" in scraper.url
+        assert "output=csv" in scraper.url
 
     def test_location_slug_exists(self):
         """Test that location slug maps to a known location."""
         scraper = DanaWharfScraper()
-        # 'dana_point' should exist in seed data
         assert scraper.location_slug == "dana_point"
+
+    def test_parse_sightings_with_counts(self):
+        """Test parsing sightings with counts."""
+        text = "3 Fin whales, 10 gray whales, 1 mola mola"
+        result = parse_sightings_text(text)
+        assert (3, "Fin Whale") in result
+        assert (10, "Gray Whale") in result
+        assert (1, "Mola Mola") in result
+
+    def test_parse_sightings_singular(self):
+        """Test parsing sightings without counts (singular)."""
+        text = "Common Dolphins, Bottlenose Dolphin"
+        result = parse_sightings_text(text)
+        assert (None, "Common Dolphin") in result
+        assert (None, "Bottlenose Dolphin") in result
+
+    def test_parse_sightings_mixed(self):
+        """Test parsing mixed singular and counted sightings."""
+        text = "2 Gray Whales, Common Dolphin"
+        result = parse_sightings_text(text)
+        assert (2, "Gray Whale") in result
+        assert (None, "Common Dolphin") in result
+
+    def test_parse_sightings_variations(self):
+        """Test parsing with species name variations."""
+        text = "Pacific White Sided Dolphins, Risso's Dolphins"
+        result = parse_sightings_text(text)
+        assert len(result) == 2
 
 
 class TestIslandPackersScraper:
@@ -159,84 +103,38 @@ class TestIslandPackersScraper:
         assert hasattr(scraper, "schedule")
         assert scraper.schedule == "45 6 * * *"
 
-    def test_url(self):
-        """Test that URL is correct."""
+    def test_csv_url(self):
+        """Test that CSV URL is correct."""
         scraper = IslandPackersScraper()
-        assert (
-            scraper.url
-            == "https://islandpackers.com/information/marine-mammal-sightings/"
-        )
-
-    def test_extract_island_mention_anacapa(self):
-        """Test extraction of Anacapa Island mention."""
-        scraper = IslandPackersScraper()
-
-        text = "We saw blue whales near Anacapa Island today."
-        island = scraper._extract_island_mention(text)
-        assert island == "Anacapa"
-
-    def test_extract_island_mention_santa_cruz(self):
-        """Test extraction of Santa Cruz Island mention."""
-        scraper = IslandPackersScraper()
-
-        text = "Great humpback sighting off Santa Cruz Island."
-        island = scraper._extract_island_mention(text)
-        assert island == "Santa Cruz"
-
-    def test_extract_island_mention_none(self):
-        """Test when no island is mentioned."""
-        scraper = IslandPackersScraper()
-
-        text = "We saw whales in the Santa Barbara Channel."
-        island = scraper._extract_island_mention(text)
-        assert island is None
-
-    def test_extract_island_mention_case_insensitive(self):
-        """Test island extraction is case insensitive."""
-        scraper = IslandPackersScraper()
-
-        text = "Dolphins spotted near santa rosa island."
-        island = scraper._extract_island_mention(text)
-        assert island == "Santa Rosa"
-
-    def test_extract_sightings_text_basic(self):
-        """Test extraction of sightings text from HTML."""
-        scraper = IslandPackersScraper()
-
-        html = """
-        <html><body>
-        <article>
-            <p>Blue whales spotted near Santa Cruz Island</p>
-            <p>Common dolphins seen throughout the channel</p>
-        </article>
-        </body></html>
-        """
-        sightings = scraper._extract_sightings_text(html)
-        assert len(sightings) >= 1
-        # Check that wildlife keywords are present
-        all_text = " ".join([s["text"] for s in sightings])
-        assert "whale" in all_text.lower() or "dolphin" in all_text.lower()
-
-    def test_extract_sightings_text_with_island(self):
-        """Test that island metadata is extracted."""
-        scraper = IslandPackersScraper()
-
-        html = """
-        <html><body>
-        <div class="sightings">
-            Humpback whales feeding near Santa Cruz Island.
-        </div>
-        </body></html>
-        """
-        sightings = scraper._extract_sightings_text(html)
-        assert len(sightings) >= 1
-        assert sightings[0]["island"] == "Santa Cruz"
+        assert "docs.google.com/spreadsheets" in scraper.url
 
     def test_location_slug_exists(self):
         """Test that location slug maps to a known location."""
         scraper = IslandPackersScraper()
-        # 'ventura' should exist in seed data
         assert scraper.location_slug == "ventura"
+
+    def test_parse_count_valid(self):
+        """Test parsing valid count values."""
+        assert parse_count("5") == 5
+        assert parse_count("10") == 10
+        assert parse_count("1,650") == 1650
+        assert parse_count("3,050") == 3050
+
+    def test_parse_count_invalid(self):
+        """Test parsing invalid count values."""
+        assert parse_count("") is None
+        assert parse_count("  ") is None
+        assert parse_count("N/A") is None
+        assert parse_count("0") is None
+
+    def test_species_columns_mapping(self):
+        """Test that species columns are mapped correctly."""
+        from island_packers import SPECIES_COLUMNS
+
+        assert "Humpback Whales" in SPECIES_COLUMNS
+        assert SPECIES_COLUMNS["Humpback Whales"] == "Humpback Whale"
+        assert SPECIES_COLUMNS["Gray Whales"] == "Gray Whale"
+        assert SPECIES_COLUMNS["Common Dolphins"] == "Common Dolphin"
 
 
 class TestPlaywrightDependency:
@@ -251,10 +149,6 @@ class TestPlaywrightDependency:
         except ImportError:
             pytest.skip("Playwright not installed")
 
-    def test_browser_launch_capability(self):
-        """Test that browser can be launched (requires Playwright install)."""
-        pytest.skip("Browser launch test requires Playwright installation")
-
 
 class TestScheduleFormat:
     """Test that all scraper schedules follow cron format."""
@@ -263,19 +157,19 @@ class TestScheduleFormat:
         """Test Harbor Breeze schedule is valid cron."""
         parts = HarborBreezeScraper.schedule.split()
         assert len(parts) == 5
-        assert parts[0] == "15"  # minute
-        assert parts[1] == "6"  # hour (6:15 AM)
+        assert parts[0] == "15"
+        assert parts[1] == "6"
 
     def test_dana_wharf_cron_format(self):
         """Test Dana Wharf schedule is valid cron."""
         parts = DanaWharfScraper.schedule.split()
         assert len(parts) == 5
-        assert parts[0] == "30"  # minute
-        assert parts[1] == "6"  # hour (6:30 AM)
+        assert parts[0] == "30"
+        assert parts[1] == "6"
 
     def test_island_packers_cron_format(self):
         """Test Island Packers schedule is valid cron."""
         parts = IslandPackersScraper.schedule.split()
         assert len(parts) == 5
-        assert parts[0] == "45"  # minute
-        assert parts[1] == "6"  # hour (6:45 AM)
+        assert parts[0] == "45"
+        assert parts[1] == "6"

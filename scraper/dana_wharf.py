@@ -1,16 +1,17 @@
-"""Dana Wharf Scraper - Fetches whale sightings from Dana Wharf website.
+"""Dana Wharf Scraper - Fetches whale sightings from Dana Wharf Google Sheet.
 
-Uses Playwright to render JS-heavy pages. Inspects DOM to find daily log.
-Annual totals may be available in static HTML.
+Dana Wharf publishes their whale watching log in a public Google Spreadsheet.
+This scraper fetches the CSV export and parses sightings.
 
 Card 21 from roadmap.
 """
 
 import asyncio
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timezone, timedelta
 from typing import Any, List
 
-from playwright.async_api import async_playwright
+import httpx
 
 import sys
 import os
@@ -20,29 +21,115 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from base import BaseScraper
     from db import get_db_session, get_location_by_slug, insert_sightings
-    from llm import LLMClient
 except ImportError:
     from scraper.base import BaseScraper
     from scraper.db import get_db_session, get_location_by_slug, insert_sightings
-    from scraper.llm import LLMClient
 
 
-DANA_WHARF_URL = "https://danawharf.com/whale-watching/"
+DANA_WHARF_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSANLNhgWSp5QjIrnJQZgou2WPVHJM--TTN4zypY5LSSwC_Bc2gHS2laI1zTIod8sFS36feAMr02A5K/pub?gid=33795621&single=true&output=csv"
 SCHEDULE = "30 6 * * *"
+
+
+SPECIES_PATTERNS = [
+    (r"(\d+)\s+(Gray\s*Whale)s?", "Gray Whale"),
+    (r"(\d+)\s+(Fin\s*Whale)s?", "Fin Whale"),
+    (r"(\d+)\s+(Humpback)s?", "Humpback Whale"),
+    (r"(\d+)\s+(Blue\s*Whale)s?", "Blue Whale"),
+    (r"(\d+)\s+(Minke)s?", "Minke Whale"),
+    (r"(\d+)\s+(Orca|Killer\s*Whale)s?", "Orca"),
+    (r"(\d+)\s+(Sperm\s*Whale)s?", "Sperm Whale"),
+    (r"(\d+)\s+(Common\s*Dolphin)s?", "Common Dolphin"),
+    (r"(\d+)\s+(Bottlenose\s*Dolphin)s?", "Bottlenose Dolphin"),
+    (
+        r"(\d+)\s+(Pacific\s*White[-\s]*Sided\s*Dolphin)s?",
+        "Pacific White-Sided Dolphin",
+    ),
+    (r"(\d+)\s+(Risso'?s?\s*Dolphin)s?", "Risso's Dolphin"),
+    (r"(\d+)\s+(Mako\s*Shark)s?", "Mako Shark"),
+    (r"(\d+)\s+(Blue\s*Shark)s?", "Blue Shark"),
+    (r"(\d+)\s+(Sea\s*Turtle)s?", "Sea Turtle"),
+    (r"(\d+)\s+(Mola\s*Mola)s?", "Mola Mola"),
+]
+
+SINGULAR_SPECIES = [
+    (r"\b(Gray\s*Whales?)\b", "Gray Whale"),
+    (r"\b(Fin\s*Whales?)\b", "Fin Whale"),
+    (r"\b(Humpbacks?)\b", "Humpback Whale"),
+    (r"\b(Blue\s*Whales?)\b", "Blue Whale"),
+    (r"\b(Minkes?)\b", "Minke Whale"),
+    (r"\b(Orcas?|Killer\s*Whales?)\b", "Orca"),
+    (r"\b(Common\s*Dolphins?)\b", "Common Dolphin"),
+    (r"\b(Bottlenose\s*Dolphins?)\b", "Bottlenose Dolphin"),
+    (r"\b(Pacific\s*White[-\s]*Sided\s*Dolphins?)\b", "Pacific White-Sided Dolphin"),
+    (r"\b(Risso'?s?\s*Dolphins?)\b", "Risso's Dolphin"),
+    (r"\b(Mola\s*Mola)\b", "Mola Mola"),
+    (r"\b(Sea\s*Turtles?)\b", "Sea Turtle"),
+]
+
+
+def parse_date(date_str: str, year: int = None) -> datetime | None:
+    """Parse date string like '3/17/2026' into UTC datetime at noon Pacific."""
+    try:
+        date_str = date_str.strip().strip('"')
+        parts = date_str.split("/")
+        if len(parts) != 3:
+            return None
+
+        month, day, yr = parts
+        month = int(month)
+        day = int(day)
+        yr = int(yr)
+
+        if yr > 2000:
+            dt = datetime(yr, month, day, 12, 0, 0)
+        else:
+            current_year = datetime.now().year
+            dt = datetime(current_year, month, day, 12, 0, 0)
+
+        pacific = timezone(timedelta(hours=-8))
+        dt = dt.replace(tzinfo=pacific)
+        return dt.astimezone(timezone.utc)
+    except (ValueError, IndexError):
+        return None
+
+
+def parse_sightings_text(text: str) -> list[tuple[int | None, str]]:
+    """Parse sightings text into list of (count, species) tuples.
+
+    Handles formats like:
+    - "3 Fin whales, 10 gray whales"
+    - "Common Dolphins" (singular, count = None)
+    - "1 mola mola"
+    """
+    sightings = []
+    text = text.strip()
+
+    for pattern, canonical_name in SPECIES_PATTERNS:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            count = int(match.group(1))
+            sightings.append((count, canonical_name))
+
+    for pattern, canonical_name in SINGULAR_SPECIES:
+        if not any(s[1] == canonical_name for s in sightings):
+            if re.search(pattern, text, re.IGNORECASE):
+                sightings.append((None, canonical_name))
+
+    return sightings
 
 
 class DanaWharfScraper(BaseScraper):
     """Dana Wharf whale sightings scraper implementation."""
 
     schedule = SCHEDULE
-    url = DANA_WHARF_URL
+    url = DANA_WHARF_CSV_URL
     location_slug = "dana_point"
 
     def __init__(self):
         super().__init__("dana_wharf")
 
     async def scrape(self) -> List[dict[str, Any]]:
-        """Fetch and process whale sightings from Dana Wharf website."""
+        """Fetch and process whale sightings from Dana Wharf Google Sheet."""
         print(f"[{self.name}] Starting scrape...")
 
         async with get_db_session() as session:
@@ -54,22 +141,46 @@ class DanaWharfScraper(BaseScraper):
 
         print(f"[{self.name}] Found location: {location.name} (ID: {location.id})")
 
-        html_content = await self._fetch_page_playwright()
-        if not html_content:
-            print(f"[{self.name}] Failed to fetch page content")
+        csv_content = await self._fetch_csv()
+        print(f"[{self.name}] Fetched CSV ({len(csv_content)} chars)")
+
+        rows = self._parse_csv(csv_content)
+        print(f"[{self.name}] Parsed {len(rows)} CSV rows")
+
+        if not rows:
+            print(f"[{self.name}] No rows found")
             return []
 
-        print(f"[{self.name}] Fetched page ({len(html_content)} chars)")
+        sightings = []
+        for date_str, sighting_text in rows:
+            if not sighting_text or sighting_text.lower().startswith("2026 sightings"):
+                continue
 
-        log_content = self._extract_log_section(html_content)
-        print(f"[{self.name}] Extracted log section ({len(log_content)} chars)")
+            timestamp = parse_date(date_str)
+            if not timestamp:
+                print(f"[{self.name}] Could not parse date: {date_str}")
+                continue
 
-        if not log_content:
-            print(f"[{self.name}] No log content found")
-            return []
+            parsed = parse_sightings_text(sighting_text)
+            if not parsed:
+                print(f"[{self.name}] No species found in: {sighting_text[:50]}...")
+                continue
 
-        sightings = await self._parse_log_with_llm(log_content, location.id)
-        print(f"[{self.name}] Parsed {len(sightings)} sightings")
+            for count, species in parsed:
+                record = {
+                    "timestamp": timestamp,
+                    "location_id": location.id,
+                    "species": species,
+                    "count": count,
+                    "source": "dana_wharf",
+                    "source_url": "https://danawharf.com/whale-watching/#log",
+                    "confidence": "high",
+                    "raw_text": sighting_text,
+                    "metadata": {},
+                }
+                sightings.append(record)
+
+        print(f"[{self.name}] Parsed {len(sightings)} sightings from {len(rows)} rows")
 
         if sightings:
             print(f"[{self.name}] Persisting {len(sightings)} sightings...")
@@ -79,115 +190,52 @@ class DanaWharfScraper(BaseScraper):
 
         return sightings
 
-    async def _fetch_page_playwright(self) -> str:
-        """Fetch page content using Playwright headless browser."""
-        try:
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
-                page = await browser.new_page()
+    async def _fetch_csv(self) -> str:
+        """Fetch the CSV export from Google Sheets."""
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/csv,text/plain,*/*",
+        }
 
-                await page.goto(self.url, wait_until="networkidle", timeout=30000)
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                self.url, headers=headers, follow_redirects=True, timeout=30.0
+            )
+            response.raise_for_status()
+            return response.text
 
-                await page.wait_for_timeout(3000)
+    def _parse_csv(self, csv_content: str) -> List[tuple]:
+        """Parse CSV content into list of (date, sighting_text) tuples.
 
-                log_section = await page.query_selector(
-                    "#log, .log, [id*='log'], [class*='log']"
-                )
-                if log_section:
-                    content = await log_section.inner_html()
-                else:
-                    content = await page.content()
+        Handles simple CSV format:
+        "3/17/2026","3 Fin whales, 10 gray whales, 1 mola mola"
+        """
+        rows = []
+        lines = csv_content.strip().split("\n")
 
-                await browser.close()
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
 
-                return content
-        except Exception as e:
-            print(f"[{self.name}] Playwright fetch failed: {e}")
-            return ""
+            if line.startswith('"') and '","' in line:
+                parts = line.split('","', 1)
+                if len(parts) == 2:
+                    date_str = parts[0].strip('"')
+                    text = parts[1].strip('"')
+                    rows.append((date_str, text))
+            elif "," in line:
+                parts = line.split(",", 1)
+                if len(parts) == 2:
+                    date_str = parts[0].strip().strip('"')
+                    text = parts[1].strip().strip('"')
+                    rows.append((date_str, text))
 
-    def _extract_log_section(self, html_content: str) -> str:
-        """Extract the daily log section from HTML content."""
-        from bs4 import BeautifulSoup
-
-        soup = BeautifulSoup(html_content, "html.parser")
-
-        log_selectors = [
-            "#log",
-            ".log",
-            "[id*='log']",
-            "[class*='log']",
-            ".daily-log",
-            ".sightings-log",
-            ".whale-log",
-            "article",
-            ".entry-content",
-        ]
-
-        for selector in log_selectors:
-            elements = soup.select(selector)
-            for elem in elements:
-                text = elem.get_text(separator=" ", strip=True)
-                if text and len(text) > 100:
-                    if any(
-                        word in text.lower()
-                        for word in [
-                            "whale",
-                            "dolphin",
-                            "sighting",
-                            "saw",
-                            "gray",
-                            "blue",
-                            "fin",
-                        ]
-                    ):
-                        return text
-
-        main_content = (
-            soup.find("main") or soup.find("div", class_="content") or soup.body
-        )
-        if main_content:
-            return main_content.get_text(separator=" ", strip=True)[:2000]
-
-        return ""
-
-    async def _parse_log_with_llm(
-        self, log_content: str, location_id: int
-    ) -> List[dict[str, Any]]:
-        """Parse log content using LLM to extract sightings."""
-        sightings = []
-        timestamp = datetime.now(timezone.utc)
-
-        async with LLMClient() as llm:
-            try:
-                result = await llm.extract(
-                    log_content,
-                    profile="default",
-                    fallback_fn=None,
-                )
-
-                if result and "sightings" in result:
-                    for sighting in result["sightings"]:
-                        species = sighting.get("species")
-                        count = sighting.get("count")
-
-                        if species:
-                            record = {
-                                "timestamp": timestamp,
-                                "location_id": location_id,
-                                "species": species,
-                                "count": count if count else None,
-                                "source": "dana_wharf",
-                                "source_url": self.url,
-                                "confidence": "high",
-                                "raw_text": log_content[:500] if log_content else None,
-                                "metadata": {},
-                            }
-                            sightings.append(record)
-
-            except Exception as e:
-                print(f"[{self.name}] LLM extraction failed: {e}")
-
-        return sightings
+        return rows
 
 
 if __name__ == "__main__":
