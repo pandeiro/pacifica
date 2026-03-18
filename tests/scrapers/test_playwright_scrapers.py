@@ -30,7 +30,37 @@ class TestHarborBreezeScraper:
     def test_url(self):
         """Test that URL is correct."""
         scraper = HarborBreezeScraper()
-        assert scraper.url == "https://www.harbor-breeze.com/whale-watching-reports/"
+        assert scraper.url == "https://2seewhales.com/whale-sightings-report/"
+
+    def test_location_slug_exists(self):
+        """Test that location slug maps to a known location."""
+        scraper = HarborBreezeScraper()
+        assert scraper.location_slug == "long_beach"
+
+    def test_parse_sightings_with_counts(self):
+        """Test parsing sightings with counts."""
+        from harbor_breeze import parse_sightings_from_text
+
+        text = "3 Fin Whales, 150 Common Dolphins"
+        result = parse_sightings_from_text(text)
+        assert (3, "Fin Whale") in result
+        assert (150, "Common Dolphin") in result
+
+    def test_parse_sightings_with_comma(self):
+        """Test parsing sightings with comma-separated numbers."""
+        from harbor_breeze import parse_sightings_from_text
+
+        text = "1,000 Common Dolphins"
+        result = parse_sightings_from_text(text)
+        assert (1000, "Common Dolphin") in result
+
+    def test_parse_sightings_humpback(self):
+        """Test parsing humpback sightings."""
+        from harbor_breeze import parse_sightings_from_text
+
+        text = "1 Humpback Whale"
+        result = parse_sightings_from_text(text)
+        assert (1, "Humpback Whale") in result
 
 
 class TestDanaWharfScraper:
