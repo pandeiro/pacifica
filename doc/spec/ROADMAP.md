@@ -34,7 +34,7 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 ## 4. Slice C — Wildlife Sightings
 - [x] **Card 23a: LLM Client Infrastructure** — `scraper/llm.py`, Ollama/OpenAI-compat wrapper, env vars; prerequisite for 18b, 19, 23
 - [x] **Card 18: iNaturalist Scraper** — REST API, 30-min schedule, haversine location resolution
-- [ ] **Card 18b: ACS-LA Gray Whale Census Scraper** — HTML + Facebook feed widget, LLM extraction, seasonal (Dec–May)
+- [x] **Card 18b: ACS-LA Gray Whale Census Scraper** — HTML + Facebook feed widget, regex extraction for TODAY counts, seasonal (Dec–May)
 - [ ] **Card 18c: Whale Alert Scraper** — REST API, free API key required (whale-alert.io)
 - [ ] **Card 19: Harbor Breeze Scraper** — Playwright headless, narrative → LLM extraction
 - [x] **Card 20: Davey's Locker Scraper** — Plain HTML table, regex parse, daily

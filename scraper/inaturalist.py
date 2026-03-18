@@ -11,8 +11,12 @@ import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scraper.base import BaseScraper
-from scraper.db import get_db_session, find_nearest_location, insert_sightings
+try:
+    from base import BaseScraper
+    from db import get_db_session, find_nearest_location, insert_sightings
+except ImportError:
+    from scraper.base import BaseScraper
+    from scraper.db import get_db_session, find_nearest_location, insert_sightings
 
 
 INAT_TAXA = [
