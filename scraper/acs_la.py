@@ -124,11 +124,13 @@ class ACSLAScraper(BaseScraper):
         print(f"[{self.name}] Extracted counts: {counts}")
 
         timestamp = datetime.now(timezone.utc)
+        sighting_date = timestamp.date()
         sightings = []
 
         if counts["southbound"] > 0:
             record = {
                 "timestamp": timestamp,
+                "sighting_date": sighting_date,
                 "location_id": location.id,
                 "species": "Gray Whale (southbound)",
                 "count": counts["southbound"],
@@ -143,6 +145,7 @@ class ACSLAScraper(BaseScraper):
         if counts["northbound"] > 0:
             record = {
                 "timestamp": timestamp,
+                "sighting_date": sighting_date,
                 "location_id": location.id,
                 "species": "Gray Whale (northbound)",
                 "count": counts["northbound"],
@@ -157,6 +160,7 @@ class ACSLAScraper(BaseScraper):
         if counts["cow_calves_south"] > 0:
             record = {
                 "timestamp": timestamp,
+                "sighting_date": sighting_date,
                 "location_id": location.id,
                 "species": "Gray Whale (cow/calf)",
                 "count": counts["cow_calves_south"],

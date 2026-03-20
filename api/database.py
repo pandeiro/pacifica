@@ -7,6 +7,7 @@ from typing import AsyncGenerator
 from sqlalchemy import (
     Boolean,
     Column,
+    Date,
     DateTime,
     Float,
     Integer,
@@ -127,7 +128,8 @@ class Sighting(Base):
 
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime(timezone=True), nullable=False)
-    location_id = Column(Integer, nullable=True)  # nullable for sightings outside30mi
+    sighting_date = Column(Date, nullable=False)
+    location_id = Column(Integer, nullable=True)
     species = Column(Text, nullable=False)
     count = Column(Integer, nullable=True)
     source = Column(Text, nullable=False)

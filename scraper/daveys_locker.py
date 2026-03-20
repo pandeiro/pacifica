@@ -94,6 +94,7 @@ class DaveysLockerScraper(BaseScraper):
                 source_url = f"{self.url}#{date_dt.strftime('%Y-%m-%d')}-{species.lower().replace(' ', '-')}"
                 record = {
                     "timestamp": date_dt,
+                    "sighting_date": date_dt.date(),
                     "location_id": location.id,
                     "species": species,
                     "count": count,
