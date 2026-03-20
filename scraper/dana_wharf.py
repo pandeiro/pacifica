@@ -152,15 +152,17 @@ class DanaWharfScraper(BaseScraper):
             return []
 
         sightings = []
+        timestamp = datetime.now(timezone.utc)
         for date_str, sighting_text in rows:
             if not sighting_text or sighting_text.lower().startswith("2026 sightings"):
                 continue
 
-            timestamp = parse_date(date_str)
-            if not timestamp:
+            parsed_dt = parse_date(date_str)
+            if not parsed_dt:
                 print(f"[{self.name}] Could not parse date: {date_str}")
                 continue
 
+            sighting_date = parsed_dt.date()
             parsed = parse_sightings_text(sighting_text)
             if not parsed:
                 print(f"[{self.name}] No species found in: {sighting_text[:50]}...")
@@ -169,7 +171,7 @@ class DanaWharfScraper(BaseScraper):
             for count, species in parsed:
                 record = {
                     "timestamp": timestamp,
-                    "sighting_date": timestamp.date(),
+                    "sighting_date": sighting_date,
                     "location_id": location.id,
                     "species": species,
                     "count": count,

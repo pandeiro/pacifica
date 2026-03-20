@@ -8,7 +8,7 @@ Card 19 from roadmap.
 
 import asyncio
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from typing import Any, List
 
 from playwright.async_api import async_playwright
@@ -28,6 +28,76 @@ except ImportError:
 
 HARBOR_BREEZE_URL = "https://2seewhales.com/whale-sightings-report/"
 SCHEDULE = "15 6 * * *"
+
+DATE_FORMATS = [
+    "%B %d, %Y",
+    "%b %d, %Y",
+    "%B %d %Y",
+    "%b %d %Y",
+    "%m/%d/%Y",
+    "%d/%m/%Y",
+]
+
+DATE_PATTERNS = [
+    re.compile(
+        r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b\d{1,2}/\d{1,2}/\d{4}\b"),
+]
+
+PASCIFIC = timezone(timedelta(hours=-8))
+
+_MONTH_MAP = {
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
+}
+
+
+def _parse_date_from_text(text: str) -> date | None:
+    """Extract a date from text using multiple patterns.
+
+    Returns a date object, or None if no date is found.
+    """
+    for pattern in DATE_PATTERNS:
+        m = pattern.search(text)
+        if not m:
+            continue
+        date_str = m.group(0)
+        for fmt in DATE_FORMATS:
+            try:
+                return datetime.strptime(date_str, fmt).date()
+            except ValueError:
+                pass
+        m2 = re.match(
+            r"(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)",
+            date_str,
+            re.IGNORECASE,
+        )
+        if m2:
+            day = int(m2.group(1))
+            mon = _MONTH_MAP.get(m2.group(2).lower()[:3])
+            yr_m = re.search(r"\d{4}", date_str)
+            if mon and yr_m:
+                try:
+                    return date(int(yr_m.group(0)), mon, day)
+                except ValueError:
+                    pass
+    return None
 
 
 def parse_sightings_from_text(text: str) -> List[tuple]:
@@ -144,66 +214,72 @@ class HarborBreezeScraper(BaseScraper):
             print(f"[{self.name}] Playwright fetch failed: {e}")
             return ""
 
-    def _extract_sightings(self, html_content: str) -> List[str]:
-        """Extract sighting text entries from HTML content.
+    def _extract_sightings(self, html_content: str) -> List[tuple[date | None, str]]:
+        """Extract (sighting_date, text) entries from HTML content.
 
-        Harbor Breeze displays sightings in dynamic content elements.
+        Harbor Breeze entries include a date in the heading or timestamp.
+        We extract the date when present and fall back to None (caller uses today).
         """
         from bs4 import BeautifulSoup
 
         soup = BeautifulSoup(html_content, "html.parser")
 
-        sighting_texts = []
+        entries: List[tuple[date | None, str]] = []
 
-        # Get all text content
         text = soup.get_text(separator="\n")
-
-        # Split by lines and look for sighting patterns
         lines = text.split("\n")
 
         sighting_pattern = re.compile(
-            r"\d+\s+(?:Common|Bottlenose|Pacific|White|Riso|Gray|Humpback|Fin|Blue|Minke|Orca|Killer)",
+            r"\d+[\d,]*\s+(?:Common|Bottlenose|Pacific|White|Riso|Riss|Gray|Humpback|Fin|Blue|Minke|Orca|Killer|Sperm)",
             re.IGNORECASE,
         )
-
         time_pattern = re.compile(r"(\d{1,2}:\d{2}\s*(?:am|pm)?)", re.IGNORECASE)
+
+        pending_date: date | None = None
 
         for line in lines:
             line = line.strip()
-            if not line:
+            if not line or len(line) < 10:
                 continue
 
-            # Skip very short lines
-            if len(line) < 10:
-                continue
-
-            # Skip cookie consent and navigation
             if any(
-                word in line.lower()
-                for word in ["cookie", "accept", "privacy", "menu", "home", "contact"]
+                w in line.lower()
+                for w in [
+                    "cookie",
+                    "accept",
+                    "privacy",
+                    "menu",
+                    "home",
+                    "contact",
+                    "subscribe",
+                    "copyright",
+                ]
             ):
                 continue
 
-            # Look for lines with sighting data
-            if sighting_pattern.search(line):
-                sighting_texts.append(line)
-            elif time_pattern.search(line) and any(
-                word in line.lower() for word in ["whale", "dolphin"]
-            ):
-                sighting_texts.append(line)
+            candidate_date = _parse_date_from_text(line)
+            if candidate_date:
+                pending_date = candidate_date
 
-        return sighting_texts
+            if sighting_pattern.search(line):
+                entries.append((pending_date, line))
+            elif time_pattern.search(line) and any(
+                w in line.lower() for w in ["whale", "dolphin"]
+            ):
+                entries.append((pending_date, line))
+
+        return entries
 
     def _parse_sightings(
-        self, sighting_texts: List[str], location_id: int
+        self, entries: List[tuple[date | None, str]], location_id: int
     ) -> List[dict]:
-        """Parse sighting text entries into structured records."""
+        """Parse sighting entries into structured records."""
         sightings = []
         timestamp = datetime.now(timezone.utc)
-        sighting_date = timestamp.date()
 
-        for text in sighting_texts:
+        for entry_date, text in entries:
             parsed = parse_sightings_from_text(text)
+            sighting_date = entry_date if entry_date else timestamp.date()
 
             for count, species in parsed:
                 record = {
