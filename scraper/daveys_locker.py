@@ -83,18 +83,20 @@ class DaveysLockerScraper(BaseScraper):
         print(f"[{self.name}] Found {len(rows)} table rows")
 
         sightings = []
+        scrape_timestamp = datetime.now(timezone.utc)
         for date_str, mammals_text in rows:
             date_dt = parse_date(date_str)
             if not date_dt:
                 print(f"[{self.name}] Could not parse date: {date_str}")
                 continue
 
+            sighting_date = date_dt.date()
             species_list = parse_species_list(mammals_text)
             for count, species in species_list:
                 source_url = f"{self.url}#{date_dt.strftime('%Y-%m-%d')}-{species.lower().replace(' ', '-')}"
                 record = {
-                    "timestamp": date_dt,
-                    "sighting_date": date_dt.date(),
+                    "timestamp": scrape_timestamp,
+                    "sighting_date": sighting_date,
                     "location_id": location.id,
                     "species": species,
                     "count": count,
