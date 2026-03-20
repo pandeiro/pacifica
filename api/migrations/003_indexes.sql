@@ -10,9 +10,9 @@ CREATE INDEX IF NOT EXISTS idx_sightings_species_time
 
 -- Deduplication indexes (must include timestamp for hypertables)
 -- Note: These are partial unique indexes that include timestamp for hypertable compatibility
-CREATE UNIQUE INDEX IF NOT EXISTS sightings_dedup_url
-    ON sightings (source, source_url, timestamp)
-    WHERE source_url IS NOT NULL;
+-- Deduplication is now handled by migration 010_sightings_rekey.sql which
+-- creates sightings_dedup_biz (source, location_id, sighting_date, species).
+-- The old URL-based index (source, source_url, timestamp) was dropped there.
 
 -- ── Conditions ─────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_conditions_location_type_time

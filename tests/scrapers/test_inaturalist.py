@@ -1,14 +1,18 @@
-"""Tests for the iNaturalist Scraper."""
+"""Tests for the iNaturalist Scraper — daily aggregate design."""
 
 import pytest
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, patch, MagicMock
 import sys
 import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "scraper"))
 
-from inaturalist import INatScraper, INAT_TAXA, SOCAL_BBOX, LOOKBACK_DAYS
+import scraper.db as scraper_db
+
+sys.modules["db"] = scraper_db
+
+from inaturalist import INatScraper, INAT_TAXA, SOCAL_BBOX
 
 
 class TestINatScraper:
@@ -19,11 +23,20 @@ class TestINatScraper:
         scraper = INatScraper()
         assert scraper.name == "inaturalist"
 
-    def test_schedule_defined(self):
-        """Test that schedule is defined for scheduler discovery."""
+    def test_schedule_is_daily(self):
+        """Test that schedule runs once per day (not every 30 min)."""
         scraper = INatScraper()
         assert hasattr(scraper, "schedule")
-        assert scraper.schedule == "*/30 * * * *"
+        assert scraper.schedule == "0 7 * * *"
+
+    def test_prior_day(self):
+        """Test _prior_day returns yesterday's date."""
+        scraper = INatScraper()
+        with patch("inaturalist.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 3, 19, tzinfo=timezone.utc)
+            mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+            pd = scraper._prior_day()
+        assert pd == date(2026, 3, 18)
 
     def test_taxa_defined(self):
         """Test that taxa mappings are defined with correct IDs."""
@@ -49,33 +62,25 @@ class TestINatScraper:
         assert SOCAL_BBOX["swlat"] < SOCAL_BBOX["nelat"]
         assert SOCAL_BBOX["swlng"] < SOCAL_BBOX["nelng"]
 
-    def test_lookback_days(self):
-        """Test that lookback is reasonable."""
-        assert LOOKBACK_DAYS >= 1
-        assert LOOKBACK_DAYS <= 30
-
     @pytest.mark.asyncio
     async def test_parse_observation_with_location(self):
-        """Test parsing an observation with valid location."""
+        """Test parsing an observation with valid location returns count + species."""
         scraper = INatScraper()
 
         mock_obs = {
             "id": 12345,
             "geojson": {"coordinates": [-118.5, 34.0]},
-            "observed_on": "2026-03-15",
-            "time_observed_at": "2026-03-15T14:30:00Z",
+            "observed_on": "2026-03-20",
+            "time_observed_at": "2026-03-20T14:30:00Z",
             "taxon": {
                 "preferred_common_name": "Common Dolphin",
                 "name": "Delphinus delphis",
             },
             "quality_grade": "research",
+            "count": 5,
         }
 
         mock_session = MagicMock()
-        mock_location = MagicMock()
-        mock_location.id = 1
-        mock_location.lat = 34.0
-        mock_location.lng = -118.5
 
         with patch(
             "inaturalist.find_nearest_location",
@@ -85,40 +90,39 @@ class TestINatScraper:
 
         assert result is not None
         assert result["species"] == "Common Dolphin"
+        assert result["location_id"] == 1
+        assert result["confidence"] == "high"
+        assert result["count"] == 5
+        assert result["obs_id"] == 12345
         assert result["source"] == "inaturalist"
         assert result["source_url"] == "https://www.inaturalist.org/observations/12345"
-        assert result["confidence"] == "high"
-        assert result["location_id"] == 1
 
     @pytest.mark.asyncio
-    async def test_parse_observation_needs_id(self):
-        """Test parsing an observation with needs_id quality grade."""
+    async def test_parse_observation_skips_outside_radius(self):
+        """Test that observations outside 30mi radius return None."""
         scraper = INatScraper()
 
         mock_obs = {
-            "id": 12346,
-            "geojson": {"coordinates": [-118.5, 34.0]},
-            "observed_on": "2026-03-15",
-            "taxon": {"name": "Delphinus delphis"},
-            "quality_grade": "needs_id",
+            "id": 12348,
+            "geojson": {"coordinates": [-150.0, 40.0]},  # Far outside SoCal
+            "observed_on": "2026-03-20",
+            "taxon": {"preferred_common_name": "Gray Whale"},
+            "quality_grade": "research",
         }
 
         mock_session = MagicMock()
 
         with patch(
             "inaturalist.find_nearest_location",
-            AsyncMock(return_value=(None, "Santa Monica Bay")),
+            AsyncMock(return_value=(None, None)),
         ):
             result = await scraper._parse_observation(mock_obs, mock_session)
 
-        assert result is not None
-        assert result["confidence"] == "medium"
-        assert result["location_id"] is None
-        assert result["metadata"].get("place_guess") == "Santa Monica Bay"
+        assert result is None
 
     @pytest.mark.asyncio
     async def test_parse_observation_no_geojson(self):
-        """Test that observations without geojson are skipped."""
+        """Test that observations without geojson return None."""
         scraper = INatScraper()
 
         mock_obs = {"id": 12347, "observed_on": "2026-03-15"}
@@ -129,11 +133,90 @@ class TestINatScraper:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_scrape_method_structure(self):
-        """Test that the scrape method has the expected structure."""
+    async def test_aggregate_groups_by_location_and_species(self):
+        """Test that _aggregate correctly groups observations."""
         scraper = INatScraper()
 
-        with patch.object(scraper, "_process_observations", AsyncMock(return_value=[])):
+        observations = [
+            {
+                "id": 1,
+                "geojson": {"coordinates": [-118.5, 34.0]},
+                "observed_on": "2026-03-20",
+                "taxon": {"preferred_common_name": "Common Dolphin"},
+                "quality_grade": "research",
+                "count": 5,
+            },
+            {
+                "id": 2,
+                "geojson": {"coordinates": [-118.6, 34.1]},
+                "observed_on": "2026-03-20",
+                "taxon": {"preferred_common_name": "Common Dolphin"},
+                "quality_grade": "needs_id",
+                "count": 3,
+            },
+        ]
+
+        mock_session = MagicMock()
+
+        with patch(
+            "inaturalist.find_nearest_location",
+            AsyncMock(return_value=(1, None)),
+        ):
+            records = await scraper._aggregate(observations, date(2026, 3, 20))
+
+        assert len(records) == 1
+        record = records[0]
+        assert record["source"] == "inaturalist"
+        assert record["location_id"] == 1
+        assert record["species"] == "Common Dolphin"
+        assert record["sighting_date"] == date(2026, 3, 20)
+        assert record["count"] == 8
+        assert record["source_url"] is None
+        assert record["metadata"]["obs_count"] == 2
+        assert record["metadata"]["obs_ids"] == [1, 2]
+
+    @pytest.mark.asyncio
+    async def test_aggregate_different_species_different_rows(self):
+        """Test that different species produce different aggregate rows."""
+        scraper = INatScraper()
+
+        observations = [
+            {
+                "id": 10,
+                "geojson": {"coordinates": [-118.5, 34.0]},
+                "observed_on": "2026-03-20",
+                "taxon": {"preferred_common_name": "Common Dolphin"},
+                "quality_grade": "research",
+                "count": 5,
+            },
+            {
+                "id": 11,
+                "geojson": {"coordinates": [-118.5, 34.0]},
+                "observed_on": "2026-03-20",
+                "taxon": {"preferred_common_name": "Gray Whale"},
+                "quality_grade": "research",
+                "count": 2,
+            },
+        ]
+
+        mock_session = MagicMock()
+
+        with patch(
+            "inaturalist.find_nearest_location",
+            AsyncMock(return_value=(1, None)),
+        ):
+            records = await scraper._aggregate(observations, date(2026, 3, 20))
+
+        assert len(records) == 2
+        species_list = sorted(r["species"] for r in records)
+        assert species_list == ["Common Dolphin", "Gray Whale"]
+
+    @pytest.mark.asyncio
+    async def test_scrape_method_returns_list(self):
+        """Test that the scrape method returns a list."""
+        scraper = INatScraper()
+
+        with patch.object(scraper, "_aggregate", AsyncMock(return_value=[])):
             with patch.object(scraper.http_client, "get") as mock_get:
                 mock_response = MagicMock()
                 mock_response.json.return_value = {"results": [], "total_results": 0}
@@ -162,14 +245,12 @@ class TestINatTaxonIDs:
     def test_no_plantae(self):
         """Taxa should not include plants (47126)."""
         taxon_ids = [tid for tid, _ in INAT_TAXA]
-        assert 47126 not in taxon_ids  # Plantae - should NOT be in list
+        assert 47126 not in taxon_ids
 
     def test_no_mollusca(self):
         """Taxa should not include Mollusca (47115) as marine mammals."""
         taxon_ids = [tid for tid, _ in INAT_TAXA]
-        # Note: 47668 (Asteroidea) is starfish, which is different
-        # from 47115 (Mollusca)
-        assert 47115 not in taxon_ids  # Mollusca - wrong ID from spec
+        assert 47115 not in taxon_ids
 
     def test_enhydra_id(self):
         """Enhydra (sea otters) should be 41859."""
@@ -182,26 +263,3 @@ class TestINatTaxonIDs:
         crab_ids = [tid for tid, name in INAT_TAXA if "Malacostraca" in name]
         assert len(crab_ids) == 1
         assert crab_ids[0] == 47187
-
-    @pytest.mark.asyncio
-    async def test_parse_observation_skips_outside_radius(self):
-        """Test that observations outside30mi radius are skipped."""
-        scraper = INatScraper()
-
-        mock_obs = {
-            "id": 12348,
-            "geojson": {"coordinates": [-150.0, 40.0]},  # Far outside SoCal
-            "observed_on": "2026-03-15",
-            "taxon": {"preferred_common_name": "Gray Whale"},
-            "quality_grade": "research",
-        }
-
-        mock_session = MagicMock()
-
-        with patch(
-            "inaturalist.find_nearest_location",
-            AsyncMock(return_value=(None, "Far offshore")),
-        ):
-            result = await scraper._parse_observation(mock_obs, mock_session)
-
-        assert result is None  # Should skip observations outside radius

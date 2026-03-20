@@ -63,14 +63,16 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE TABLE IF NOT EXISTS sightings (
     id                  BIGSERIAL,
     timestamp           TIMESTAMPTZ NOT NULL,
-    location_id         INTEGER NOT NULL REFERENCES locations(id) ON DELETE RESTRICT,
+    sighting_date       DATE NOT NULL,
+    location_id         INTEGER REFERENCES locations(id) ON DELETE RESTRICT,
     species             TEXT NOT NULL,
     count               INTEGER,
     source              TEXT NOT NULL,
     source_url          TEXT,
     raw_text            TEXT,
     confidence          TEXT NOT NULL DEFAULT 'medium',
-    metadata            JSONB NOT NULL DEFAULT '{}'
+    metadata            JSONB NOT NULL DEFAULT '{}',
+    PRIMARY KEY (id, timestamp)
 );
 
 CREATE TABLE IF NOT EXISTS conditions (

@@ -283,30 +283,63 @@ async def find_nearest_location(
 async def insert_sightings(session: AsyncSession, records: List[Dict[str, Any]]):
     """Insert sighting records into the database.
 
-    Uses upsert logic based on the UNIQUE index on (source, source_url, timestamp).
-    If a record with the same combination exists, it updates other fields.
+    Deduplication key: (source, location_id, sighting_date, species).
+    For records with a location, uses the full 4-tuple.
+    For records without a location (NULL), uses (source, sighting_date, species).
+    If a matching record exists, updates count (accumulates), confidence,
+    raw_text, and metadata. sighting_date and timestamp are never updated
+    on existing rows to preserve the audit trail.
+
+    Required record fields:
+      - source: str
+      - sighting_date: date or datetime (date portion used)
+      - species: str
+      - timestamp: datetime (scrape/run time)
+    Optional: location_id, count, confidence, source_url, raw_text, metadata
     """
     for record in records:
-        existing = await session.execute(
-            select(Sighting).where(
-                Sighting.source == record["source"],
-                Sighting.source_url == record["source_url"],
-                Sighting.timestamp == record["timestamp"],
+        sd = record["sighting_date"]
+        if hasattr(sd, "date"):
+            sd = sd.date()
+        loc_id = record.get("location_id")
+
+        if loc_id is not None:
+            existing = await session.execute(
+                select(Sighting).where(
+                    Sighting.source == record["source"],
+                    Sighting.location_id == loc_id,
+                    Sighting.sighting_date == sd,
+                    Sighting.species == record["species"],
+                )
             )
-        )
+        else:
+            existing = await session.execute(
+                select(Sighting).where(
+                    Sighting.source == record["source"],
+                    Sighting.location_id.is_(None),
+                    Sighting.sighting_date == sd,
+                    Sighting.species == record["species"],
+                )
+            )
         existing_sighting = existing.scalar_one_or_none()
 
         if existing_sighting:
-            existing_sighting.location_id = record.get("location_id")
-            existing_sighting.species = record["species"]
-            existing_sighting.count = record.get("count")
-            existing_sighting.confidence = record.get("confidence", "medium")
-            existing_sighting.raw_text = record.get("raw_text")
-            existing_sighting.meta = record.get("metadata", {})
+            if record.get("count") is not None:
+                existing_sighting.count = (existing_sighting.count or 0) + record[
+                    "count"
+                ]
+            conf = record.get("confidence", "medium")
+            if conf == "high" or existing_sighting.confidence != "high":
+                existing_sighting.confidence = conf
+            if record.get("raw_text"):
+                existing_sighting.raw_text = record["raw_text"]
+            if record.get("metadata"):
+                existing_sighting.meta = record["metadata"]
         else:
             sighting = Sighting(
                 timestamp=record["timestamp"],
-                location_id=record.get("location_id"),
+                sighting_date=sd,
+                location_id=loc_id,
                 species=record["species"],
                 count=record.get("count"),
                 source=record["source"],
