@@ -20,9 +20,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from base import BaseScraper
     from db import get_db_session, get_location_by_slug, insert_sightings
+    from llm import LLMClient
 except ImportError:
     from scraper.base import BaseScraper
     from scraper.db import get_db_session, get_location_by_slug, insert_sightings
+    from scraper.llm import LLMClient
 
 
 ACS_LA_URL = "https://acs-la.org/todays-whale-count/"
@@ -67,6 +69,89 @@ ALT_DATE_REGEX = re.compile(
 )
 
 PASCIFIC = timezone(timedelta(hours=-8))
+
+LLM_NARRATIVE_SPECIES = [
+    ("Common Dolphin", ["common dolphin", "commons dolphin"]),
+    ("Bottlenose Dolphin", ["bottlenose dolphin", "bottlenose dolphins"]),
+    (
+        "Pacific White-Sided Dolphin",
+        [
+            "pacific white-sided dolphin",
+            "white-sided dolphin",
+            "pacific white sided dolphin",
+        ],
+    ),
+    (
+        "Risso's Dolphin",
+        ["rissos dolphin", "riso dolphin", "risso's dolphin", "rissos dolphins"],
+    ),
+    ("Gray Whale", ["gray whale", "grey whale"]),
+    ("Humpback Whale", ["humpback whale", "humpback whales"]),
+    ("Minke Whale", ["minke whale", "mink whale", "minke whales"]),
+    ("Blue Whale", ["blue whale", "blue whales"]),
+    ("Fin Whale", ["fin whale", "finn whale", "fin whales"]),
+    ("Orca", ["orca", "killer whale", "killer whales"]),
+    ("Sea Lion", ["sea lion", "sea lions", "california sea lion"]),
+]
+
+WHALE_DIRECTIONS = {
+    "southbound": "southbound",
+    "northbound": "northbound",
+    "south bound": "southbound",
+    "north bound": "northbound",
+}
+
+
+def normalize_llm_species(raw_species: str) -> tuple[str, str] | None:
+    """Map an LLM-returned species name to canonical name + direction.
+
+    Returns (canonical_name, direction) or None if not a known species.
+    direction is 'southbound', 'northbound', or '' for non-whale species.
+    """
+    raw = raw_species.lower().strip()
+
+    direction = ""
+    base = raw
+    for dir_key in WHALE_DIRECTIONS:
+        if dir_key in raw:
+            direction = WHALE_DIRECTIONS[dir_key]
+            for canonical, aliases in LLM_NARRATIVE_SPECIES:
+                if canonical.lower() in raw:
+                    return (canonical, direction)
+            break
+
+    for canonical, aliases in LLM_NARRATIVE_SPECIES:
+        if raw in aliases or raw == canonical.lower():
+            return (canonical, direction)
+
+    return None
+
+
+def parse_llm_sightings(llm_result: dict) -> dict[str, int]:
+    """Convert LLM extraction result into a flat dict of species → count.
+
+    Includes direction suffixes for gray whales.
+    """
+    sightings: dict[str, int] = {}
+    for item in llm_result.get("sightings", []):
+        raw_species = item.get("species", "")
+        count = item.get("count")
+        if not isinstance(count, int) or count <= 0:
+            continue
+
+        normalized = normalize_llm_species(raw_species)
+        if not normalized:
+            continue
+
+        canonical, direction = normalized
+        if canonical == "Gray Whale" and direction:
+            species_key = f"Gray Whale ({direction})"
+        else:
+            species_key = canonical
+
+        sightings[species_key] = count
+
+    return sightings
 
 
 def is_gray_whale_season() -> bool:
@@ -236,7 +321,23 @@ class ACSLAScraper(BaseScraper):
         print(f"[{self.name}] Processing latest post ({len(latest_post)} chars)")
 
         counts = extract_structured_counts(latest_post)
-        print(f"[{self.name}] Extracted counts: {counts}")
+        print(f"[{self.name}] Regex counts: {counts}")
+
+        llm_sightings: dict[str, int] = {}
+        try:
+            async with LLMClient() as llm_client:
+                llm_result = await llm_client.extract(
+                    latest_post,
+                    profile="acs-la",
+                    fallback_fn=None,
+                )
+                if llm_result:
+                    llm_sightings = parse_llm_sightings(llm_result)
+                    print(f"[{self.name}] LLM sightings: {llm_sightings}")
+                else:
+                    print(f"[{self.name}] LLM returned empty result")
+        except Exception as e:
+            print(f"[{self.name}] LLM extraction skipped: {e}")
 
         timestamp = datetime.now(timezone.utc)
         sighting_date = parse_date(latest_post)
@@ -251,50 +352,64 @@ class ACSLAScraper(BaseScraper):
 
         sightings = []
 
-        if counts["southbound"] > 0:
-            record = {
+        def make_record(
+            species: str, count: int, confidence: str, metadata: dict
+        ) -> dict:
+            return {
                 "timestamp": timestamp,
                 "sighting_date": sighting_date,
                 "location_id": location.id,
-                "species": "Gray Whale (southbound)",
-                "count": counts["southbound"],
+                "species": species,
+                "count": count,
                 "source": "acs_la",
                 "source_url": self.url,
-                "confidence": "high",
+                "confidence": confidence,
                 "raw_text": latest_post,
-                "metadata": {"direction": "southbound"},
+                "metadata": metadata,
             }
-            sightings.append(record)
+
+        if counts["southbound"] > 0:
+            sightings.append(
+                make_record(
+                    "Gray Whale (southbound)",
+                    counts["southbound"],
+                    "high",
+                    {"direction": "southbound"},
+                )
+            )
 
         if counts["northbound"] > 0:
-            record = {
-                "timestamp": timestamp,
-                "sighting_date": sighting_date,
-                "location_id": location.id,
-                "species": "Gray Whale (northbound)",
-                "count": counts["northbound"],
-                "source": "acs_la",
-                "source_url": self.url,
-                "confidence": "high",
-                "raw_text": latest_post,
-                "metadata": {"direction": "northbound"},
-            }
-            sightings.append(record)
+            sightings.append(
+                make_record(
+                    "Gray Whale (northbound)",
+                    counts["northbound"],
+                    "high",
+                    {"direction": "northbound"},
+                )
+            )
 
         if counts["cow_calves_south"] > 0:
-            record = {
-                "timestamp": timestamp,
-                "sighting_date": sighting_date,
-                "location_id": location.id,
-                "species": "Gray Whale (cow/calf)",
-                "count": counts["cow_calves_south"],
-                "source": "acs_la",
-                "source_url": self.url,
-                "confidence": "high",
-                "raw_text": latest_post,
-                "metadata": {"direction": "southbound", "type": "cow_calf"},
-            }
-            sightings.append(record)
+            sightings.append(
+                make_record(
+                    "Gray Whale (cow/calf)",
+                    counts["cow_calves_south"],
+                    "high",
+                    {"direction": "southbound", "type": "cow_calf"},
+                )
+            )
+
+        for species, count in llm_sightings.items():
+            if species.startswith("Gray Whale"):
+                continue
+            if not any(s["species"] == species for s in sightings):
+                sightings.append(
+                    make_record(
+                        species,
+                        count,
+                        "medium",
+                        {"source": "llm_narrative"},
+                    )
+                )
 
         if sightings:
             print(f"[{self.name}] Persisting {len(sightings)} sightings...")
