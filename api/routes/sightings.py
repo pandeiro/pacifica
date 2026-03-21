@@ -183,15 +183,21 @@ async def get_sightings(
     today = now.date()
     start_date = today - timedelta(days=days - 1)
 
-    # Query sightings
-    query = select(Sighting).where(Sighting.sighting_date >= start_date)
+    # Query sightings - only past dates (not future), within date range
+    # Order ASC so most recent dates come first in the results
+    query = select(Sighting).where(
+        Sighting.sighting_date >= start_date,
+        Sighting.sighting_date <= today,
+    )
 
     # Filter by confidence
     if quality_levels:
         query = query.where(Sighting.confidence.in_(quality_levels))
 
-    # Order by timestamp descending (most recent first), limit results
-    query = query.order_by(desc(Sighting.timestamp)).limit(limit)
+    # Order by sighting_date descending (most recent first), then by timestamp
+    query = query.order_by(
+        desc(Sighting.sighting_date), desc(Sighting.timestamp)
+    ).limit(limit)
 
     result = await db.execute(query)
     sightings_db = result.scalars().all()

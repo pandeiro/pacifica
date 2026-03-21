@@ -93,6 +93,16 @@ class WaterTemperatureResponse(BaseModel):
         from_attributes = True
 
 
+class VisibilityHistoryItem(BaseModel):
+    """Single visibility reading for historical chart."""
+
+    timestamp: datetime
+    visibility_max: int
+
+    class Config:
+        from_attributes = True
+
+
 class VisibilityResponse(BaseModel):
     """Response model for water visibility endpoint."""
 
@@ -105,6 +115,7 @@ class VisibilityResponse(BaseModel):
     source: Optional[str] = None
     source_url: Optional[str] = None
     last_updated: Optional[datetime] = None
+    history: list[VisibilityHistoryItem] = []
 
     class Config:
         from_attributes = True

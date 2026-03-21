@@ -24,7 +24,9 @@ const TAXON_GROUPS: TaxonGroup[] = ['whale', 'dolphin', 'shark', 'pinniped', 'bi
 function formatRecency(sightingDate: string | null): string {
   if (!sightingDate) return '';
   
-  const date = new Date(sightingDate);
+  // Parse YYYY-MM-DD as local date (not UTC which causes timezone shifts)
+  const [year, month, day] = sightingDate.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
   
   const formatter = new Intl.DateTimeFormat('en-US', {
     month: 'numeric',
@@ -36,11 +38,12 @@ function formatRecency(sightingDate: string | null): string {
 function getTimeGroup(sightingDate: string | null): string | null {
   if (!sightingDate) return null;
   
-  const date = new Date(sightingDate);
+  // Parse YYYY-MM-DD as local date (not UTC which causes timezone shifts)
+  const [year, month, day] = sightingDate.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
   const now = new Date();
   const currentDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const sightingDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.floor((currentDate.getTime() - sightingDateOnly.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor((currentDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
   if (diffDays < 0) return null;  // Future dates - don't show
   if (diffDays <= 1) {

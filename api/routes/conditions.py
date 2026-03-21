@@ -13,6 +13,7 @@ from schemas import (
     WaterTemperatureResponse,
     StationInfo,
     VisibilityResponse,
+    VisibilityHistoryItem,
 )
 from logging_config import get_logger
 from utils.station_utils import calculate_distance, get_direction
@@ -272,6 +273,26 @@ async def get_visibility(
                 swell_min = swell_meta.get("swell_min")
                 swell_max = swell_meta.get("swell_max")
 
+    # Fetch history for chart (last 30 visibility readings)
+    history_result = await db.execute(
+        select(Condition)
+        .where(Condition.condition_type == "visibility")
+        .where(Condition.source == "south_coast_divers")
+        .order_by(desc(Condition.timestamp))
+        .limit(30)
+    )
+    history_records = history_result.scalars().all()
+    history = [
+        VisibilityHistoryItem(
+            timestamp=record.timestamp,
+            visibility_max=record.meta.get("visibility_max", int(record.value))
+            if record.meta
+            else int(record.value),
+        )
+        for record in reversed(history_records)  # Oldest first for chart
+        if record.timestamp and record.value is not None
+    ]
+
     return VisibilityResponse(
         location_id=location_id,
         location_name=location.name,
@@ -282,6 +303,7 @@ async def get_visibility(
         source=source,
         source_url=source_url,
         last_updated=last_updated,
+        history=history,
     )
 
     location_result = await db.execute(

@@ -139,6 +139,11 @@ export interface WaterTemperatureResponse {
   station_info?: StationInfo;
 }
 
+export interface VisibilityHistoryItem {
+  timestamp: string;
+  visibility_max: number;
+}
+
 export interface VisibilityResponse {
   location_id: number;
   location_name: string;
@@ -149,6 +154,7 @@ export interface VisibilityResponse {
   source: string | null;
   source_url: string | null;
   last_updated: string | null;
+  history: VisibilityHistoryItem[];
 }
 
 export interface SightingsResponse {
