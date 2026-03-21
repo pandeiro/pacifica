@@ -68,7 +68,12 @@ SINGULAR_SPECIES = [
 
 
 def parse_date(date_str: str, year: int = None) -> datetime | None:
-    """Parse date string like '3/17/2026' into UTC datetime at noon Pacific."""
+    """Parse date string like '3/17/2026' or '4/1/25' into UTC datetime at noon Pacific.
+
+    Handles both 4-digit years (2026) and 2-digit years (25 -> 2025, 54 -> 1954).
+    For 2-digit years, if the resulting year is more than 10 years in the future,
+    subtract 100 to handle edge cases like '54' meant to be 1954.
+    """
     try:
         date_str = date_str.strip().strip('"')
         parts = date_str.split("/")
@@ -80,11 +85,24 @@ def parse_date(date_str: str, year: int = None) -> datetime | None:
         day = int(day)
         yr = int(yr)
 
+        current_year = datetime.now().year
+
+        # Normalize year
         if yr > 2000:
-            dt = datetime(yr, month, day, 12, 0, 0)
+            # 4-digit year like 2026
+            final_year = yr
+        elif yr < 100:
+            # 2-digit year like 25 -> 2025
+            final_year = 2000 + yr
+            # If resulting year is more than 10 years in the future,
+            # it's likely a past date like '54' meant to be 1954
+            if final_year > current_year + 10:
+                final_year -= 100
         else:
-            current_year = datetime.now().year
-            dt = datetime(current_year, month, day, 12, 0, 0)
+            # Fallback for any other case
+            final_year = current_year
+
+        dt = datetime(final_year, month, day, 12, 0, 0)
 
         pacific = timezone(timedelta(hours=-8))
         dt = dt.replace(tzinfo=pacific)
