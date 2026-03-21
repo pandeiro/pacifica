@@ -226,7 +226,7 @@
   .dashboard {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
-    overflow-y: auto;
+    overflow: auto;
     height: auto;
     min-height: 100vh;
     -webkit-overflow-scrolling: touch;
