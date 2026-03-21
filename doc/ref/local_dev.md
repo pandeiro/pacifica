@@ -66,33 +66,23 @@ All services join a shared `pacifica_default` network. Scrapers connect directly
 
 ## 4. Schema Migrations
 
-### Migration Runner
-Migrations are managed via `db/run_migrations.sh`:
+We use [Alembic](https://alembic.sqlalchemy.org/) for database schema migrations.
+
+### Generating a Migration
+
+After changing models in `api/database.py`, auto-generate a migration:
 
 ```bash
-#!/bin/bash
-set -e
-MIGRATIONS_DIR="$(dirname "$0")/migrations"
-for file in "$MIGRATIONS_DIR"/*.sql; do
-    echo "Running migration: $(basename "$file")"
-    psql "$DATABASE_URL" -f "$file"
-done
+docker compose exec api alembic revision --autogenerate -m "describe your change"
 ```
 
-### Makefile Target
-```makefile
-.PHONY: migrate
-migrate:
-	docker compose exec postgres /bin/sh -c "cd /migrations && for f in *.sql; do psql -f $$f; done"
-```
+### Applying Migrations
 
-### Migration Order
-1. `001_tables.sql` — Create base tables
-2. `002_hypertables.sql` — Convert to TimescaleDB hypertables
-3. `003_indexes.sql` — Add indexes and unique constraints
-4. `004_constraints.sql` — Add CHECK constraints
-5. `005_retention_policies.sql` — Set TimescaleDB retention
-6. `006_compression_policies.sql` — Set compression policies
+Migrations run automatically on container startup (`alembic upgrade head`). To run manually:
+
+```bash
+make migrate
+```
 
 ## 5. Seed Data
 
