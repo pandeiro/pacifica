@@ -40,7 +40,7 @@ class LLMClient:
 
     def __init__(self, model: str | None = None):
         self.base_url = "http://host.docker.internal:11434"
-        self.model = model or os.getenv("LLM_MODEL", "llama3.2:1b")
+        self.model = model or os.getenv("LLM_MODEL", "llama3.2:3b")
         self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
