@@ -3,7 +3,7 @@
 - Fixed visibility tile: metadata persistence, scraper startup retry logic, and LLM extraction fallback
 - Cards 24-25: Implemented Sightings API endpoint (taxon group derivation, species canonicalization) and WildlifeIntelTile component (full-text search, taxon+source filtering, recency grouping, 15-min polling)
 - Fixed Docker networking: added `extra_hosts: host.docker.internal` for Ollama access from containers
-- Fixed mobile viewport overflow: removed horizontal padding on dashboard for screens ≤1024px
+- Fixed mobile viewport overflow: removed horizontal padding on dashboard for screens ≤1024px, added min-width:0 and max-width:100% to prevent grid children from expanding
 - Fixed wildlife data pipeline: sighting_date in API, proper date parsing, 2-digit year normalization, species typo correction, count accumulation fix
 - Removed Activity Scores tile; re-layout center column with Wildlife Tile at 50%
 - Observability infrastructure: scrape_logs table wired (base.py auto-logs all runs), ScrapeLog ORM model, structlog in all scrapers replacing print(), scraper health API endpoint (/api/health/scrapers), prometheus-fastapi-instrumentator (/metrics), DB connectivity in /api/health, request ID middleware, PostgreSQL exporter in docker-compose, Docker healthchecks, resource limits, tenacity added to scraper deps
