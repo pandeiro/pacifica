@@ -19,6 +19,7 @@
   grid-column: 1;
   grid-row: 1;
   min-height: 0;
+  min-width: 0;
 }
 
 /* Center column */
@@ -226,8 +227,7 @@
   .dashboard {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: auto;
     height: auto;
     min-height: 100vh;
     -webkit-overflow-scrolling: touch;
