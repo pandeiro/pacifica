@@ -231,6 +231,7 @@
     height: auto;
     min-height: 100vh;
     -webkit-overflow-scrolling: touch;
+    padding: var(--tile-gap) var(--tile-gap) 0;
   }
   
   .dashboard__main {
