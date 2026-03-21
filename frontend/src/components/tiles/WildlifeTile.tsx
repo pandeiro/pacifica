@@ -33,15 +33,16 @@ function formatRecency(sightingDate: string | null): string {
   return formatter.format(date);
 }
 
-function getTimeGroup(sightingDate: string | null): string | null {
-  if (!sightingDate) return null;
+function getTimeGroup(sightingDate: string | null): string {
+  if (!sightingDate) return 'Older';
   
   const date = new Date(sightingDate);
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  const currentDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sightingDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.floor((currentDate.getTime() - sightingDateOnly.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (diffDays < 2) {
+  if (diffDays <= 1) {
     return 'Last Day';
   }
   if (diffDays <= 7) {
@@ -50,7 +51,7 @@ function getTimeGroup(sightingDate: string | null): string | null {
   if (diffDays <= 50) {
     return 'Older';
   }
-  return null;
+  return 'Older';
 }
 
 export function WildlifeTile() {
@@ -100,7 +101,7 @@ export function WildlifeTile() {
 
     filteredSightings.forEach((s) => {
       const group = getTimeGroup(s.sighting_date);
-      if (group && group in groups) {
+      if (group in groups) {
         groups[group].push(s);
       }
     });
