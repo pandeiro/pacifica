@@ -93,15 +93,16 @@ async def get_tides(
 
     station_id = station.station_id
 
-    # Calculate time window
+    # Calculate time window - include past events so chart starts before "now"
     now = datetime.now(timezone.utc)
+    start_time = now - timedelta(hours=24)
     end_time = now + timedelta(hours=hours)
 
     # Query tide events for this station in the time window
     tide_result = await db.execute(
         select(Tide)
         .where(Tide.station_id == station_id)
-        .where(Tide.timestamp >= now)
+        .where(Tide.timestamp >= start_time)
         .where(Tide.timestamp <= end_time)
         .order_by(Tide.timestamp)
     )

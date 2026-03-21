@@ -67,6 +67,8 @@ Before starting any work, run through `KICKOFF.md` to:
 
 - **Repository**: https://github.com/pandeiro/pacifica
 - **Production**: https://pch.onl
+- **API (Production)**: https://api.pch.onl
+- **API (Dev)**: http://localhost:4900
 - **Staging**: https://staging.pch.onl
 - **Local Dev**: Frontend runs on http://localhost:5173 (Vite dev server), API on http://localhost:4900
 

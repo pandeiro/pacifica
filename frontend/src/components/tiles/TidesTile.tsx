@@ -137,8 +137,11 @@ export function TidesTile({ locationId }: TidesTileProps) {
     if (graphData.length < 2) return;
     
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const t = Math.max(0, Math.min(1, x / rect.width));
+    const pixelX = e.clientX - rect.left;
+    
+    // Map pixel x to viewBox coordinate so hover matches the curve
+    const viewBoxX = (pixelX / rect.width) * width;
+    const t = viewBoxX / width;
     const time = startTime + t * timeRange;
     
     // Find which segment and interpolate
@@ -152,8 +155,8 @@ export function TidesTile({ locationId }: TidesTileProps) {
       }
     }
     
-    setHoverPos({ x, time, height: interpolatedHeight });
-  }, [graphData, startTime, timeRange]);
+    setHoverPos({ x: viewBoxX, time, height: interpolatedHeight });
+  }, [graphData, startTime, timeRange, width]);
   
   const handleMouseLeave = useCallback(() => {
     setHoverPos(null);
@@ -236,11 +239,12 @@ export function TidesTile({ locationId }: TidesTileProps) {
                   <>
                     <path className="tide-curve__path" d={curvePath} fill="none" />
                     {currentPos && (
-                      <circle 
-                        className="tide-curve__current" 
-                        cx={currentPos.x} 
-                        cy={currentPos.y} 
-                        r="4" 
+                      <line
+                        className="tide-curve__now-line"
+                        x1={currentPos.x}
+                        y1="0"
+                        x2={currentPos.x}
+                        y2={height}
                       />
                     )}
                     {/* Hover line */}
