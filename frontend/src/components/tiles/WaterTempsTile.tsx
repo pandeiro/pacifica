@@ -14,7 +14,7 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
     return (
       <div className="tile water-temps" data-testid="water-temps-tile">
         <div className="tile__header">
-          <div className="tile__title">Water Temp</div>
+          <div className="tile__title">Water Temps</div>
         </div>
         <div className="tile__content" data-testid="tile-loading">
           <div className="loading-state">Loading...</div>
@@ -27,7 +27,7 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
     return (
       <div className="tile water-temps tile--error" data-testid="water-temps-tile">
         <div className="tile__header">
-          <div className="tile__title">Water Temp</div>
+          <div className="tile__title">Water Temps</div>
         </div>
         <div className="tile__content" data-testid="tile-error">
           <div className="error-state">Data unavailable</div>
@@ -57,7 +57,7 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
   return (
     <div className="tile water-temps" data-testid="water-temps-tile">
       <div className="tile__header">
-        <div className="tile__title">Water Temp</div>
+        <div className="tile__title">Water Temps</div>
       </div>
       {data?.station_info && (
         <div className="tile__subtitle">

@@ -63,7 +63,7 @@ export function WildlifeTile() {
         <div className="tile__header">
           <div className="tile__title">
             <span className="tile__title-icon">🔍</span>
-            Wildlife Tile
+            Wildlife
           </div>
         </div>
 
