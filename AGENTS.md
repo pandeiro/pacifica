@@ -48,6 +48,22 @@ All generated content should read like a **passionate, knowledgeable local**—t
 - Use `.env.example` to document required environment variables
 - Never commit `.env` files
 
+## Production Safety
+
+### Destructive Operations
+**Always seek explicit permission before performing destructive operations on production systems:**
+- `DELETE`, `DROP`, or `TRUNCATE` database operations
+- Overwriting configuration files in production
+- Operations that destroy data (even "stale" or "duplicate" data may have irreplaceable metadata)
+
+When data needs to be corrected on production, prefer **upsert/update** patterns over deletion. For example, if dive report metadata is missing, reprocess and update rather than delete.
+
+### Remote Access
+Production server access via SSH:
+```bash
+ssh mu@ottertime.com
+```
+
 ## Workflow
 
 ### Before Starting Work
