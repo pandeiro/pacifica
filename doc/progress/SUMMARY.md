@@ -1,1 +1,1 @@
-- Introduced Alembic for database migration tracking
+- Migrated from custom SQL scripts to Alembic for schema tracking
