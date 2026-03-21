@@ -1,3 +1,4 @@
 - Migrated from custom SQL scripts to Alembic for schema tracking
 - Consolidated pre-Alembic migrations (001-010) and seed data into Alembic baseline revision so fresh databases bootstrap automatically
 - Fixed visibility tile: metadata persistence, scraper startup retry logic, and LLM extraction fallback
+- Cards 24-25: Implemented Sightings API endpoint (taxon group derivation, species canonicalization) and WildlifeIntelTile component (full-text search, taxon+source filtering, recency grouping, 15-min polling)
