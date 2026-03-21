@@ -89,10 +89,11 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
             <div className="water-temps__sparkline">
               {sparklineData.map((reading, i) => {
                 const height = ((reading.temperature_f - minTemp) / tempRange) * 100;
+                const isCurrent = i === sparklineData.length - 1;
                 return (
                   <div
                     key={i}
-                    className="water-temps__sparkline-bar"
+                    className={`water-temps__sparkline-bar${isCurrent ? ' water-temps__sparkline-bar--current' : ''}`}
                     style={{ height: `${Math.max(height, 10)}%` }}
                     onMouseEnter={() => setHoveredIndex(i)}
                     onMouseLeave={() => setHoveredIndex(null)}
@@ -100,11 +101,11 @@ export function WaterTempsTile({ locationId }: WaterTempsTileProps) {
                 );
               })}
             </div>
-            {hoveredIndex !== null && (
-              <div className="water-temps__sparkline-value">
-                {sparklineData[hoveredIndex].temperature_f.toFixed(1)}°F at {formatTime(sparklineData[hoveredIndex].timestamp)}
-              </div>
-            )}
+            <div className="water-temps__sparkline-value">
+              {hoveredIndex !== null
+                ? `${sparklineData[hoveredIndex].temperature_f.toFixed(1)}°F at ${formatTime(sparklineData[hoveredIndex].timestamp)}`
+                : '\u00A0'}
+            </div>
           </div>
         )}
 
