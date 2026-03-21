@@ -22,12 +22,20 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _run(sql: str) -> None:
+    """Execute a single SQL statement.
+
+    asyncpg cannot handle multiple statements in one execute() call,
+    so each op.execute() must contain exactly one statement.
+    """
+    op.execute(sql)
+
+
 def upgrade() -> None:
     # ── 001: Tables ─────────────────────────────────────────────────────
-    op.execute(
-        """
-        CREATE EXTENSION IF NOT EXISTS timescaledb;
+    _run("CREATE EXTENSION IF NOT EXISTS timescaledb")
 
+    _run("""
         CREATE TABLE IF NOT EXISTS locations (
             id                  SERIAL PRIMARY KEY,
             name                TEXT NOT NULL,
@@ -40,8 +48,10 @@ def upgrade() -> None:
             coastline_bearing   NUMERIC(5, 2),
             description         TEXT,
             metadata            JSONB NOT NULL DEFAULT '{}'
-        );
+        )
+    """)
 
+    _run("""
         CREATE TABLE IF NOT EXISTS live_cams (
             id                  SERIAL PRIMARY KEY,
             name                TEXT NOT NULL,
@@ -51,8 +61,10 @@ def upgrade() -> None:
             source_name         TEXT NOT NULL,
             is_active           BOOLEAN NOT NULL DEFAULT TRUE,
             sort_order          INTEGER NOT NULL DEFAULT 0
-        );
+        )
+    """)
 
+    _run("""
         CREATE TABLE IF NOT EXISTS seasonal_events (
             id                  SERIAL PRIMARY KEY,
             name                TEXT NOT NULL,
@@ -65,16 +77,20 @@ def upgrade() -> None:
             species             TEXT,
             category            TEXT NOT NULL,
             metadata            JSONB NOT NULL DEFAULT '{}'
-        );
+        )
+    """)
 
+    _run("""
         CREATE TABLE IF NOT EXISTS settings (
             id                  SERIAL PRIMARY KEY,
             key                 TEXT NOT NULL UNIQUE,
             value               JSONB NOT NULL,
             description         TEXT,
             updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
+        )
+    """)
 
+    _run("""
         CREATE TABLE IF NOT EXISTS sightings (
             id                  BIGSERIAL,
             timestamp           TIMESTAMPTZ NOT NULL,
@@ -88,8 +104,10 @@ def upgrade() -> None:
             confidence          TEXT NOT NULL DEFAULT 'medium',
             metadata            JSONB NOT NULL DEFAULT '{}',
             PRIMARY KEY (id, timestamp)
-        );
+        )
+    """)
 
+    _run("""
         CREATE TABLE IF NOT EXISTS conditions (
             id                  BIGSERIAL,
             timestamp           TIMESTAMPTZ NOT NULL,
@@ -101,8 +119,10 @@ def upgrade() -> None:
             source_url          TEXT,
             raw_text            TEXT,
             metadata            JSONB NOT NULL DEFAULT '{}'
-        );
+        )
+    """)
 
+    _run("""
         CREATE TABLE IF NOT EXISTS tides (
             id                  BIGSERIAL,
             timestamp           TIMESTAMPTZ NOT NULL,
@@ -110,8 +130,10 @@ def upgrade() -> None:
             type                TEXT NOT NULL,
             height_ft           NUMERIC(6, 3) NOT NULL,
             source              TEXT NOT NULL DEFAULT 'noaa'
-        );
+        )
+    """)
 
+    _run("""
         CREATE TABLE IF NOT EXISTS sun_events (
             id                  SERIAL PRIMARY KEY,
             date                DATE NOT NULL,
@@ -123,8 +145,10 @@ def upgrade() -> None:
             golden_hour_evening_start   TIMESTAMPTZ NOT NULL,
             golden_hour_evening_end     TIMESTAMPTZ NOT NULL,
             UNIQUE (date, location_id)
-        );
+        )
+    """)
 
+    _run("""
         CREATE TABLE IF NOT EXISTS activity_scores (
             id                  BIGSERIAL,
             timestamp           TIMESTAMPTZ NOT NULL,
@@ -133,8 +157,10 @@ def upgrade() -> None:
             score               INTEGER,
             factors             JSONB NOT NULL DEFAULT '{}',
             summary_text        TEXT
-        );
+        )
+    """)
 
+    _run("""
         CREATE TABLE IF NOT EXISTS scrape_logs (
             id                  SERIAL PRIMARY KEY,
             scraper_name        TEXT NOT NULL,
@@ -145,56 +171,61 @@ def upgrade() -> None:
             records_updated     INTEGER NOT NULL DEFAULT 0,
             records_skipped     INTEGER NOT NULL DEFAULT 0,
             error_message       TEXT
-        );
-        """
-    )
+        )
+    """)
 
     # ── 002: Hypertables ────────────────────────────────────────────────
-    op.execute(
-        """
-        SELECT create_hypertable('sightings', 'timestamp',
-            chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE);
-        SELECT create_hypertable('conditions', 'timestamp',
-            chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE);
-        SELECT create_hypertable('tides', 'timestamp',
-            chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE);
-        SELECT create_hypertable('activity_scores', 'timestamp',
-            chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE);
-        """
+    _run(
+        "SELECT create_hypertable('sightings', 'timestamp', "
+        "chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE)"
+    )
+    _run(
+        "SELECT create_hypertable('conditions', 'timestamp', "
+        "chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE)"
+    )
+    _run(
+        "SELECT create_hypertable('tides', 'timestamp', "
+        "chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE)"
+    )
+    _run(
+        "SELECT create_hypertable('activity_scores', 'timestamp', "
+        "chunk_time_interval => INTERVAL '7 days', if_not_exists => TRUE)"
     )
 
     # ── 003: Indexes ────────────────────────────────────────────────────
-    op.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_sightings_location_time
-            ON sightings (location_id, timestamp DESC);
-        CREATE INDEX IF NOT EXISTS idx_sightings_species_time
-            ON sightings (species, timestamp DESC);
-
-        CREATE INDEX IF NOT EXISTS idx_conditions_location_type_time
-            ON conditions (location_id, condition_type, timestamp DESC);
-        CREATE UNIQUE INDEX IF NOT EXISTS conditions_dedup
-            ON conditions (source, location_id, condition_type, timestamp);
-
-        CREATE INDEX IF NOT EXISTS idx_tides_station_time
-            ON tides (station_id, timestamp DESC);
-
-        CREATE INDEX IF NOT EXISTS idx_activity_scores_location_type_time
-            ON activity_scores (location_id, activity_type, timestamp DESC);
-
-        CREATE INDEX IF NOT EXISTS idx_locations_slug
-            ON locations (slug);
-        CREATE INDEX IF NOT EXISTS idx_locations_region
-            ON locations (region);
-
-        CREATE INDEX IF NOT EXISTS idx_scrape_logs_scraper_time
-            ON scrape_logs (scraper_name, started_at DESC);
-        """
+    _run(
+        "CREATE INDEX IF NOT EXISTS idx_sightings_location_time "
+        "ON sightings (location_id, timestamp DESC)"
+    )
+    _run(
+        "CREATE INDEX IF NOT EXISTS idx_sightings_species_time "
+        "ON sightings (species, timestamp DESC)"
+    )
+    _run(
+        "CREATE INDEX IF NOT EXISTS idx_conditions_location_type_time "
+        "ON conditions (location_id, condition_type, timestamp DESC)"
+    )
+    _run(
+        "CREATE UNIQUE INDEX IF NOT EXISTS conditions_dedup "
+        "ON conditions (source, location_id, condition_type, timestamp)"
+    )
+    _run(
+        "CREATE INDEX IF NOT EXISTS idx_tides_station_time "
+        "ON tides (station_id, timestamp DESC)"
+    )
+    _run(
+        "CREATE INDEX IF NOT EXISTS idx_activity_scores_location_type_time "
+        "ON activity_scores (location_id, activity_type, timestamp DESC)"
+    )
+    _run("CREATE INDEX IF NOT EXISTS idx_locations_slug ON locations (slug)")
+    _run("CREATE INDEX IF NOT EXISTS idx_locations_region ON locations (region)")
+    _run(
+        "CREATE INDEX IF NOT EXISTS idx_scrape_logs_scraper_time "
+        "ON scrape_logs (scraper_name, started_at DESC)"
     )
 
     # ── 004: Constraints ────────────────────────────────────────────────
-    op.execute(
-        """
+    _run("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -204,8 +235,10 @@ def upgrade() -> None:
                     ADD CONSTRAINT sightings_confidence_valid
                     CHECK (confidence IN ('high', 'medium', 'low'));
             END IF;
-        END $$;
+        END $$
+    """)
 
+    _run("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -218,8 +251,10 @@ def upgrade() -> None:
                         'swell_height', 'swell_period', 'wind_speed', 'wind_direction'
                     ));
             END IF;
-        END $$;
+        END $$
+    """)
 
+    _run("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -229,8 +264,10 @@ def upgrade() -> None:
                     ADD CONSTRAINT tides_type_valid
                     CHECK (type IN ('high', 'low', 'predicted'));
             END IF;
-        END $$;
+        END $$
+    """)
 
+    _run("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -240,8 +277,10 @@ def upgrade() -> None:
                     ADD CONSTRAINT activity_scores_score_range
                     CHECK (score IS NULL OR (score >= 0 AND score <= 100));
             END IF;
-        END $$;
+        END $$
+    """)
 
+    _run("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -254,8 +293,10 @@ def upgrade() -> None:
                         'scenic_drive', 'tidepooling'
                     ));
             END IF;
-        END $$;
+        END $$
+    """)
 
+    _run("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -265,8 +306,10 @@ def upgrade() -> None:
                     ADD CONSTRAINT locations_type_valid
                     CHECK (location_type IN ('beach', 'tidepool', 'viewpoint', 'harbor', 'island'));
             END IF;
-        END $$;
+        END $$
+    """)
 
+    _run("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -279,8 +322,10 @@ def upgrade() -> None:
                         'central_coast', 'channel_islands'
                     ));
             END IF;
-        END $$;
+        END $$
+    """)
 
+    _run("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -290,8 +335,10 @@ def upgrade() -> None:
                     ADD CONSTRAINT scrape_logs_status_valid
                     CHECK (status IN ('success', 'failure', 'partial'));
             END IF;
-        END $$;
+        END $$
+    """)
 
+    _run("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -304,16 +351,14 @@ def upgrade() -> None:
                         'celestial', 'tidal', 'breeding', 'conditions'
                     ));
             END IF;
-        END $$;
-        """
-    )
+        END $$
+    """)
 
     # ── 005: Clear sun events ───────────────────────────────────────────
-    op.execute("TRUNCATE TABLE sun_events;")
+    _run("TRUNCATE TABLE sun_events")
 
     # ── 006: Dive report constraint ─────────────────────────────────────
-    op.execute(
-        """
+    _run("""
         DO $$
         BEGIN
             IF EXISTS (
@@ -329,13 +374,11 @@ def upgrade() -> None:
                     'swell', 'swell_height', 'swell_period',
                     'wind_speed', 'wind_direction', 'dive_report'
                 ));
-        END $$;
-        """
-    )
+        END $$
+    """)
 
     # ── 007: Station refactor ───────────────────────────────────────────
-    op.execute(
-        """
+    _run("""
         CREATE TABLE IF NOT EXISTS noaa_stations (
             id SERIAL PRIMARY KEY,
             station_id VARCHAR(20) UNIQUE NOT NULL,
@@ -344,13 +387,17 @@ def upgrade() -> None:
             lng DECIMAL(10, 6) NOT NULL,
             description TEXT,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        );
+        )
+    """)
 
-        ALTER TABLE locations
-            ADD COLUMN IF NOT EXISTS show_in_dropdown BOOLEAN DEFAULT true,
-            ADD COLUMN IF NOT EXISTS nearest_noaa_station_id INTEGER
-                REFERENCES noaa_stations(id);
+    _run(
+        "ALTER TABLE locations "
+        "ADD COLUMN IF NOT EXISTS show_in_dropdown BOOLEAN DEFAULT true, "
+        "ADD COLUMN IF NOT EXISTS nearest_noaa_station_id INTEGER "
+        "REFERENCES noaa_stations(id)"
+    )
 
+    _run("""
         INSERT INTO noaa_stations (station_id, name, lat, lng, description) VALUES
             ('9410032', 'San Clemente Island', 32.8833, -118.3167, 'NOAA tide station'),
             ('9410068', 'San Nicolas Island', 33.2333, -119.5167, 'NOAA tide station'),
@@ -371,71 +418,70 @@ def upgrade() -> None:
             ('9411340', 'Santa Barbara', 34.4, -119.6833, 'NOAA tide station'),
             ('9412110', 'Port San Luis', 35.1689, -120.7542, 'NOAA tide station at Port San Luis'),
             ('9412553', 'San Simeon', 35.65, -121.1833, 'NOAA tide station')
-        ON CONFLICT (station_id) DO NOTHING;
+        ON CONFLICT (station_id) DO NOTHING
+    """)
 
+    _run("""
         UPDATE locations
         SET nearest_noaa_station_id = ns.id
         FROM noaa_stations ns
-        WHERE locations.noaa_station_id = ns.station_id;
+        WHERE locations.noaa_station_id = ns.station_id
+    """)
 
-        UPDATE locations
-        SET show_in_dropdown = false
-        WHERE slug = 'port_san_luis';
+    _run("UPDATE locations SET show_in_dropdown = false WHERE slug = 'port_san_luis'")
 
+    _run("""
         UPDATE locations
         SET show_in_dropdown = true
         WHERE noaa_station_id IS NOT NULL
-          AND slug != 'port_san_luis';
-        """
-    )
+          AND slug != 'port_san_luis'
+    """)
 
     # ── 008: Sun events calculated ──────────────────────────────────────
-    op.execute(
-        """
-        ALTER TABLE sun_events
-            ADD COLUMN IF NOT EXISTS is_calculated BOOLEAN DEFAULT true;
+    _run(
+        "ALTER TABLE sun_events "
+        "ADD COLUMN IF NOT EXISTS is_calculated BOOLEAN DEFAULT true"
+    )
 
-        CREATE INDEX IF NOT EXISTS idx_sun_events_calculated
-            ON sun_events(location_id, date)
-            WHERE is_calculated = true;
+    _run(
+        "CREATE INDEX IF NOT EXISTS idx_sun_events_calculated "
+        "ON sun_events(location_id, date) WHERE is_calculated = true"
+    )
 
-        TRUNCATE TABLE sun_events;
+    _run("TRUNCATE TABLE sun_events")
 
-        COMMENT ON TABLE sun_events IS
-            'Sunrise, sunset, and golden hour events calculated mathematically per location';
-        COMMENT ON COLUMN sun_events.is_calculated IS
-            'True if calculated mathematically, false if from external API (legacy)';
-        """
+    _run(
+        "COMMENT ON TABLE sun_events IS "
+        "'Sunrise, sunset, and golden hour events calculated mathematically per location'"
+    )
+
+    _run(
+        "COMMENT ON COLUMN sun_events.is_calculated IS "
+        "'True if calculated mathematically, false if from external API (legacy)'"
     )
 
     # ── 009: Sightings nullable location ────────────────────────────────
-    op.execute("ALTER TABLE sightings ALTER COLUMN location_id DROP NOT NULL;")
+    _run("ALTER TABLE sightings ALTER COLUMN location_id DROP NOT NULL")
 
     # ── 010: Sightings rekey ────────────────────────────────────────────
-    op.execute(
-        """
-        TRUNCATE sightings;
-
-        ALTER TABLE sightings ADD COLUMN IF NOT EXISTS sighting_date DATE NOT NULL;
-
-        ALTER TABLE sightings DROP CONSTRAINT IF EXISTS sightings_pkey;
-        ALTER TABLE sightings ADD PRIMARY KEY (id, timestamp);
-
-        DROP INDEX IF EXISTS sightings_dedup_url;
-
+    _run("TRUNCATE sightings")
+    _run("ALTER TABLE sightings ADD COLUMN IF NOT EXISTS sighting_date DATE NOT NULL")
+    _run("ALTER TABLE sightings DROP CONSTRAINT IF EXISTS sightings_pkey")
+    _run("ALTER TABLE sightings ADD PRIMARY KEY (id, timestamp)")
+    _run("DROP INDEX IF EXISTS sightings_dedup_url")
+    _run("""
         CREATE UNIQUE INDEX IF NOT EXISTS sightings_dedup_biz
             ON sightings (source, location_id, sighting_date, species, timestamp)
-            WHERE location_id IS NOT NULL;
-
+            WHERE location_id IS NOT NULL
+    """)
+    _run("""
         CREATE UNIQUE INDEX IF NOT EXISTS sightings_dedup_biz_noloc
             ON sightings (source, sighting_date, species, timestamp)
-            WHERE location_id IS NULL;
-        """
-    )
+            WHERE location_id IS NULL
+    """)
 
     # ── Seed data ───────────────────────────────────────────────────────
-    op.execute(
-        """
+    _run("""
         INSERT INTO locations
             (name, slug, lat, lng, location_type, region,
              noaa_station_id, coastline_bearing, description)
@@ -509,9 +555,8 @@ def upgrade() -> None:
             ('Point Vicente', 'point_vicente', 33.7392, -118.4156, 'beach',
              'la_coast', '9410738', 225.0,
              'ACS-LA Gray Whale Census observation point on Palos Verdes Peninsula')
-        ON CONFLICT (slug) DO NOTHING;
-        """
-    )
+        ON CONFLICT (slug) DO NOTHING
+    """)
 
 
 def downgrade() -> None:
