@@ -327,9 +327,7 @@ async def insert_sightings(session: AsyncSession, records: List[Dict[str, Any]])
 
         if existing_sighting:
             if record.get("count") is not None:
-                existing_sighting.count = (existing_sighting.count or 0) + record[
-                    "count"
-                ]
+                existing_sighting.count = record["count"]
             conf = record.get("confidence", "medium")
             if conf == "high" or existing_sighting.confidence != "high":
                 existing_sighting.confidence = conf
