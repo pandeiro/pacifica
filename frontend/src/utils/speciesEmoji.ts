@@ -1,15 +1,23 @@
 /**
  * Emoji mapping for wildlife species.
- * Maps lowercase species names to appropriate emojis.
+ *
+ * Two-tier lookup:
+ * 1. Exact species name (case-insensitive) — checked first
+ * 2. Substring match against an ordered list — first match short-circuits
+ *
+ * To add a new mapping, put the most specific substring first.
  */
 
-export const speciesEmoji: Record<string, string> = {
+/** Exact matches (case-insensitive, full species name) */
+const EXACT_SPECIES: Record<string, string> = {
   // Whales
   'gray whale': '🐋',
   'grey whale': '🐋',
   'humpback whale': '🐋',
   'blue whale': '🐋',
   'fin whale': '🐋',
+  'minke whale': '🐋',
+  'sperm whale': '🐋',
   'orca': '🐋',
   'killer whale': '🐋',
 
@@ -17,40 +25,80 @@ export const speciesEmoji: Record<string, string> = {
   'bottlenose dolphin': '🐬',
   'common dolphin': '🐬',
   'pacific white-sided dolphin': '🐬',
-  'dolphin': '🐬',
-  'porpoise': '🐬',
+  'risso\'s dolphin': '🐬',
 
   // Sharks
   'white shark': '🦈',
   'great white shark': '🦈',
-  'mako shark': '🦈',
-  'blue shark': '🦈',
-  'shark': '🦈',
 
   // Pinnipeds
   'california sea lion': '🦭',
-  'sea lion': '🦭',
   'harbor seal': '🦭',
-  'seal': '🦭',
-  'elephant seal': '🦭',
-  'pinniped': '🦭',
 
   // Birds
   'brown pelican': '🦅',
-  'pelican': '🦅',
   'double-crested cormorant': '🦅',
-  'cormorant': '🦅',
-  'tern': '🐦',
-  'albatross': '🐦',
-  'shearwater': '🐦',
-  'murre': '🐦',
-  'puffin': '🐦',
+  'brandt\'s cormorant': '🦅',
 
   // Fish
   'garibaldi': '🐠',
   'mola mola': '🐟',
-  'sunfish': '🐟',
 };
+
+/**
+ * Substring matches — first match wins, order matters.
+ * Put more specific patterns before generic ones.
+ */
+const SUBSTRING_RULES: [string, string][] = [
+  // Fish — specific before generic
+  ['garibaldi', '🐠'],
+  ['mola mola', '🐟'],
+  ['mola', '🐟'],
+  ['sunfish', '🐟'],
+  ['sheephead', '🐟'],
+  ['grunion', '🐟'],
+  ['trout', '🐟'],
+  ['surfperch', '🐟'],
+  ['silverside', '🐟'],
+  ['sargo', '🐟'],
+  ['opaleye', '🐟'],
+  ['halibut', '🐟'],
+  ['croaker', '🐟'],
+  ['sea chub', '🐟'],
+  ['kelp bass', '🐟'],
+  ['flying fish', '🐟'],
+  ['marlin', '🐟'],
+  ['swordfish', '🐟'],
+  ['shark', '🦈'],
+
+  // Whales
+  ['orca', '🐋'],
+  ['killer whale', '🐋'],
+  ['whale', '🐋'],
+
+  // Dolphins / porpoises
+  ['dolphin', '🐬'],
+  ['porpoise', '🐬'],
+
+  // Pinnipeds
+  ['sea lion', '🦭'],
+  ['elephant seal', '🦭'],
+  ['seal', '🦭'],
+
+  // Birds
+  ['pelican', '🦅'],
+  ['cormorant', '🦅'],
+  ['albatross', '🦅'],
+  ['tern', '🐦'],
+  ['gull', '🐦'],
+  ['murre', '🐦'],
+  ['puffin', '🐦'],
+  ['shearwater', '🐦'],
+  ['falcon', '🐦'],
+
+  // Reptiles
+  ['turtle', '🐢'],
+];
 
 /**
  * Get emoji for a species name.
@@ -59,5 +107,18 @@ export const speciesEmoji: Record<string, string> = {
  */
 export function getSpeciesEmoji(species: string): string {
   const key = species.toLowerCase();
-  return speciesEmoji[key] || '🐾';
+
+  // Tier 1: exact match
+  if (EXACT_SPECIES[key]) {
+    return EXACT_SPECIES[key];
+  }
+
+  // Tier 2: first substring match wins
+  for (const [substr, emoji] of SUBSTRING_RULES) {
+    if (key.includes(substr)) {
+      return emoji;
+    }
+  }
+
+  return '🐾';
 }
