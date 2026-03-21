@@ -98,6 +98,13 @@ const SUBSTRING_RULES: [string, string][] = [
 
   // Reptiles
   ['turtle', '🐢'],
+
+  // Crustaceans / invertebrates
+  ['lobster', '🦞'],
+  ['crab', '🦀'],
+  ['isopod', '🪼'],
+  ['decapod', '🪼'],
+  ['pagurus', '🪼'],
 ];
 
 /**
