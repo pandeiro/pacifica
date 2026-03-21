@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from typing import List, Any, Dict
 import httpx
 import sys
@@ -155,10 +156,15 @@ class NOAAWaterTempScraper(BaseScraper):
                 continue
 
             # Parse timestamp
+            # NOAA returns times in local station time (LST/LDT) when using time_zone=lst
+            # We need to attach the Pacific timezone, then convert to UTC for storage
+            pacific_tz = ZoneInfo("America/Los_Angeles")
             timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M")
-            # Create hourly bucket key (floor to the hour)
-            hour_key = timestamp.replace(minute=0, second=0, microsecond=0)
-            hour_key = hour_key.replace(tzinfo=timezone.utc)
+            timestamp = timestamp.replace(tzinfo=pacific_tz)
+            # Create hourly bucket key (floor to the hour, in UTC)
+            hour_key = timestamp.astimezone(timezone.utc).replace(
+                minute=0, second=0, microsecond=0
+            )
 
             hourly_readings[hour_key].append(value)
 
