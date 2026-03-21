@@ -75,3 +75,23 @@
   text-align: center;
   padding: 8px 0;
 }
+
+.visibility__chart {
+  margin-top: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.visibility__chart svg {
+  display: block;
+}
+
+.visibility__chart rect {
+  transition: opacity 0.2s ease;
+}
+
+.visibility__chart rect:hover {
+  opacity: 1 !important;
+}

@@ -1,8 +1,60 @@
 import { useVisibility } from '../../hooks/useVisibility';
+import type { VisibilityResponse } from '../../types';
 import './VisibilityTile.css';
 
 interface VisibilityTileProps {
   locationId: number;
+}
+
+const CHART_HEIGHT = 60;
+const Y_MIN = 10;
+const Y_MAX = 30;
+
+function VisibilityChart({ history }: { history: VisibilityResponse['history'] }) {
+  if (history.length === 0) return null;
+
+  const barWidth = Math.max(4, Math.min(12, 300 / history.length - 2));
+  const chartWidth = history.length * (barWidth + 2);
+
+  const getBarHeight = (value: number) => {
+    const clamped = Math.max(Y_MIN, Math.min(Y_MAX, value));
+    return ((clamped - Y_MIN) / (Y_MAX - Y_MIN)) * CHART_HEIGHT;
+  };
+
+  return (
+    <div className="visibility__chart">
+      <svg
+        width={chartWidth}
+        height={CHART_HEIGHT + 10}
+        viewBox={`0 0 ${chartWidth} ${CHART_HEIGHT + 10}`}
+        preserveAspectRatio="xMinYMid meet"
+      >
+        <line
+          x1="0"
+          y1={CHART_HEIGHT - getBarHeight(Y_MIN)}
+          x2={chartWidth}
+          y2={CHART_HEIGHT - getBarHeight(Y_MIN)}
+          stroke="var(--color-text-muted)"
+          strokeWidth="0.5"
+          strokeDasharray="2,2"
+        />
+        {history.map((item, i) => {
+          const barHeight = getBarHeight(item.visibility_max);
+          return (
+            <rect
+              key={item.timestamp}
+              x={i * (barWidth + 2)}
+              y={CHART_HEIGHT - barHeight}
+              width={barWidth}
+              height={barHeight}
+              fill="var(--color-ocean)"
+              opacity={0.6 + (i / history.length) * 0.4}
+            />
+          );
+        })}
+      </svg>
+    </div>
+  );
 }
 
 export function VisibilityTile({ locationId }: VisibilityTileProps) {
@@ -91,6 +143,8 @@ export function VisibilityTile({ locationId }: VisibilityTileProps) {
             )}
           </div>
         </div>
+
+        <VisibilityChart history={data.history || []} />
 
         {data.source && (
           <div className="visibility__source">
