@@ -72,6 +72,17 @@ Before starting any work, run through `KICKOFF.md` to:
 
 ## Tools
 
+### Database Migrations (Alembic)
+We use [Alembic](https://alembic.sqlalchemy.org/) for database schema migrations. When you change models in `api/database.py`, generate a migration:
+
+```bash
+# Auto-generate migration from model changes
+docker compose exec api alembic revision --autogenerate -m "describe your change"
+
+# Run pending migrations
+make migrate
+```
+
 ### Screenshot Capture
 Use `tools/screenshot.py` to capture full-page screenshots of the dashboard for UI verification:
 
