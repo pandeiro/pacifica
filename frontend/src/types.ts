@@ -74,11 +74,15 @@ export interface SeasonalEvent {
 }
 
 export interface LiveCam {
-  id: string;
+  id: number;
   name: string;
-  location: string;
-  embedUrl: string;
-  isLive: boolean;
+  location_id: number;
+  location_name: string | null;
+  embed_type: 'youtube' | 'iframe';
+  embed_url: string;
+  source_name: string;
+  is_active: boolean;
+  sort_order: number;
 }
 
 // API Response Types

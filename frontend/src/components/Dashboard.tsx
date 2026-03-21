@@ -21,14 +21,14 @@ export function Dashboard() {
   return (
     <div className="dashboard">
       <div className="dashboard__main">
-        <div className="dashboard__map">
+        <div className="dashboard__left">
           <MapTile />
+          <DriveTimesTile />
         </div>
         
         <div className="dashboard__center">
+          <LiveCamTile onLocationChange={setLocationId} />
           <WildlifeTile />
-          <LiveCamTile />
-          <DriveTimesTile />
         </div>
         
 <div className="dashboard__right">

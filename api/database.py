@@ -139,6 +139,21 @@ class Sighting(Base):
     meta = Column("metadata", JSONB, nullable=False, server_default=text("'{}'"))
 
 
+class LiveCam(Base):
+    """Live coastal webcam model."""
+
+    __tablename__ = "live_cams"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, nullable=False)
+    location_id = Column(Integer, nullable=False)
+    embed_type = Column(Text, nullable=False)  # youtube | iframe
+    embed_url = Column(Text, nullable=False)
+    source_name = Column(Text, nullable=False)
+    is_active = Column(Boolean, nullable=False, server_default=text("true"))
+    sort_order = Column(Integer, nullable=False, server_default=text("0"))
+
+
 class ScrapeLog(Base):
     """Scraper execution audit log model."""
 

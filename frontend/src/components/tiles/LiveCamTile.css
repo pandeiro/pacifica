@@ -2,6 +2,15 @@
   min-height: 200px;
 }
 
+.live-cam__source {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
 .live-cam__viewport {
   flex: 1;
   background: var(--abyss);
@@ -73,6 +82,16 @@
   font-family: var(--font-mono);
   font-size: 0.625rem;
   color: var(--text-secondary);
+}
+
+.live-cam__location-badge {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  color: var(--glow-cyan);
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+  border-left: 1px solid var(--glass-border);
+  padding-left: 0.5rem;
 }
 
 .live-cam__selector {

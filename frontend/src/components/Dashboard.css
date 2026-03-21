@@ -14,10 +14,13 @@
   display: contents;
 }
 
-/* Map spans full height on the left */
-.dashboard__map {
+/* Left column: map + drive times stacked */
+.dashboard__left {
   grid-column: 1;
   grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tile-gap);
   min-height: 0;
   min-width: 0;
 }
@@ -204,10 +207,13 @@
   min-height: unset;
 }
 
-/* Proportional flex: center column */
-.wildlife-tile  { flex: 2; }
-.live-cam        { flex: 1; }
+/* Proportional flex: left column */
+.map-tile        { flex: 3; }
 .drive-times     { flex: 1; }
+
+/* Proportional flex: center column */
+.live-cam        { flex: 3; }
+.wildlife-tile   { flex: 2; }
 
 /* Proportional flex: right column */
 .sun-tile        { flex: 1; }
@@ -241,7 +247,7 @@
     overflow: hidden;
   }
   
-  .dashboard__map,
+  .dashboard__left,
   .dashboard__center,
   .dashboard__right,
   .dashboard__timeline {
@@ -250,9 +256,14 @@
     min-width: 0;
     max-width: 100%;
   }
-  
-  .dashboard__map {
+
+  .dashboard__left {
+    flex: none;
+  }
+
+  .dashboard__left .map-tile {
     height: 400px;
+    flex: none;
   }
   
   .dashboard__center,

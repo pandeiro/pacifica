@@ -55,8 +55,8 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 - [ ] **Card 31: Drive Times (Google Maps)**
 
 ## 7. Slice F — Live Cams
-- [ ] **Card 32: Live Cams Seed Data**
-- [ ] **Card 33: Live Cam Frontend Tile**
+- [x] **Card 32: Live Cams Seed Data** — 11 cams (YouTube + iframe), seeded via Alembic migration; location_id links to dashboard selector
+- [x] **Card 33: Live Cam Frontend Tile** — fetches from API, renders YouTube/iframe embeds, syncs global location selector on cam switch; Drive Times moved to left column
 
 ## 8. Slice G — Seasonal Timeline
 - [ ] **Card 34: Seasonal Events Seed Data**
