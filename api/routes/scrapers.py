@@ -10,7 +10,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import ScrapeLog, get_db
@@ -77,17 +77,7 @@ async def scraper_health(db: AsyncSession = Depends(get_db)):
         )
         last_log = result.scalar_one_or_none()
 
-        # Get consecutive failures
-        failure_result = await db.execute(
-            select(func.count())
-            .select_from(ScrapeLog)
-            .where(
-                ScrapeLog.scraper_name == scraper_name,
-                ScrapeLog.status == "failure",
-            )
-            .order_by(ScrapeLog.started_at.desc())
-            .limit(10)
-        )
+        # Get recent logs for consecutive failure counting
         recent_logs_result = await db.execute(
             select(ScrapeLog)
             .where(ScrapeLog.scraper_name == scraper_name)
