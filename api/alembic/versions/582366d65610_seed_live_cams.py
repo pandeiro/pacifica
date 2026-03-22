@@ -21,16 +21,19 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.execute("""
         INSERT INTO live_cams (name, location_id, embed_type, embed_url, source_name, is_active, sort_order)
-        VALUES
-            ('Anacapa Underwater',       17, 'youtube', 'OAJF1Ie1m_Q',  'Explore.org / Channel Islands NP',  true,  0),
-            ('Eagle Cam — Catalina Is.', 16, 'youtube', 'RmmAzrAkKqI',  'Explore.org / Channel Islands NP',  true,  1),
-            ('Santa Monica Pier',         3, 'youtube', 'qmE7U1YZPQA',  'Explore.org / Pacific Park',         true,  2),
-            ('Dana Point Harbor',         1, 'youtube', 'LDNMn4mrKxA',  'HD Beach Cams',                      true,  3),
-            ('Laguna Beach',              6, 'youtube', 'Xvu5imiDOXY',  'SkylineWebcams',                     true,  4),
-            ('King Harbor',              12, 'youtube', 'Ni7v-aIa3bw',  'City of Redondo Beach',              true,  5),
-            ('Redondo Beach Pier',       12, 'youtube', 'TuVOKRP7IBA',  'City of Redondo Beach',              true,  6),
-            ('Scripps Pier',              2, 'iframe',  'https://embed.cdn-surfline.com/cams/5834a0733421b20545c4b584/64ba68ebf1c960a93d1faba8f86cc16a3ed05913', 'Surfline / Scripps Oceanography', true, 7),
-            ('La Jolla Shores',           2, 'iframe',  'https://embed.cdn-surfline.com/cams/58349b9b3421b20545c4b54d/199ae31e65bf748a7c7d928332998440490cd979', 'Surfline / Scripps Oceanography', true, 8)
+        SELECT cam.name, loc.id, cam.embed_type, cam.embed_url, cam.source_name, cam.is_active, cam.sort_order
+        FROM (VALUES
+            ('Anacapa Underwater',       'prisoners_harbor',     'youtube', 'OAJF1Ie1m_Q',  'Explore.org / Channel Islands NP',  true::boolean,  0),
+            ('Eagle Cam — Catalina Is.', 'avalon_catalina',      'youtube', 'RmmAzrAkKqI',  'Explore.org / Channel Islands NP',  true::boolean,  1),
+            ('Santa Monica Pier',        'santa_monica',         'youtube', 'qmE7U1YZPQA',  'Explore.org / Pacific Park',         true::boolean,  2),
+            ('Dana Point Harbor',        'dana_point',           'youtube', 'LDNMn4mrKxA',  'HD Beach Cams',                      true::boolean,  3),
+            ('Laguna Beach',             'shaws_cove',           'youtube', 'Xvu5imiDOXY',  'SkylineWebcams',                     true::boolean,  4),
+            ('King Harbor',              'redondo_beach',        'youtube', 'Ni7v-aIa3bw',  'City of Redondo Beach',              true::boolean,  5),
+            ('Redondo Beach Pier',       'redondo_beach',        'youtube', 'TuVOKRP7IBA',  'City of Redondo Beach',              true::boolean,  6),
+            ('Scripps Pier',             'la_jolla',             'iframe',  'https://embed.cdn-surfline.com/cams/5834a0733421b20545c4b584/64ba68ebf1c960a93d1faba8f86cc16a3ed05913', 'Surfline / Scripps Oceanography', true::boolean, 7),
+            ('La Jolla Shores',          'la_jolla',             'iframe',  'https://embed.cdn-surfline.com/cams/58349b9b3421b20545c4b54d/199ae31e65bf748a7c7d928332998440490cd979', 'Surfline / Scripps Oceanography', true::boolean, 8)
+        ) AS cam(name, slug, embed_type, embed_url, source_name, is_active, sort_order)
+        JOIN locations loc ON loc.slug = cam.slug
         ON CONFLICT DO NOTHING;
     """)
 
