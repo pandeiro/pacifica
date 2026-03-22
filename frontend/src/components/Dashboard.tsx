@@ -7,7 +7,6 @@ import { VisibilityTile } from './tiles/VisibilityTile';
 import { WildlifeTile } from './tiles/WildlifeTile';
 import { SunTile } from './tiles/SunTile';
 import { TidesTile } from './tiles/TidesTile';
-import { DriveTimesTile } from './tiles/DriveTimesTile';
 import { SeasonalTimelineTile } from './tiles/SeasonalTimelineTile';
 import { useLocations } from '../hooks/useLocations';
 
@@ -22,8 +21,7 @@ export function Dashboard() {
     <div className="dashboard">
       <div className="dashboard__main">
         <div className="dashboard__left">
-          <MapTile />
-          <DriveTimesTile />
+          <MapTile locationId={locationId} onLocationChange={setLocationId} />
         </div>
         
         <div className="dashboard__center">

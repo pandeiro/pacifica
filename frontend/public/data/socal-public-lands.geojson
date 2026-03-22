@@ -1,0 +1,125 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Angeles National Forest", "agency": "USFS", "type": "National Forest" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-118.65, 34.75], [-118.15, 34.75], [-117.80, 34.55],
+          [-117.55, 34.35], [-117.45, 34.15], [-117.55, 34.05],
+          [-117.80, 34.15], [-118.05, 34.20], [-118.30, 34.10],
+          [-118.50, 34.15], [-118.65, 34.35], [-118.70, 34.55],
+          [-118.65, 34.75]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Los Padres National Forest", "agency": "USFS", "type": "National Forest" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-120.50, 35.60], [-119.70, 35.60], [-119.40, 35.30],
+          [-119.20, 34.90], [-119.30, 34.60], [-119.50, 34.45],
+          [-119.70, 34.55], [-119.90, 34.50], [-120.10, 34.60],
+          [-120.30, 34.80], [-120.50, 35.10], [-120.50, 35.60]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Cleveland National Forest", "agency": "USFS", "type": "National Forest" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-117.60, 33.50], [-117.20, 33.50], [-116.90, 33.30],
+          [-116.80, 33.10], [-116.90, 32.90], [-117.10, 32.80],
+          [-117.30, 32.80], [-117.50, 32.90], [-117.55, 33.10],
+          [-117.60, 33.30], [-117.60, 33.50]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Channel Islands National Park", "agency": "NPS", "type": "National Park" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-119.90, 34.10], [-119.60, 34.10], [-119.50, 33.90],
+          [-119.60, 33.80], [-119.80, 33.75], [-120.00, 33.85],
+          [-120.10, 34.00], [-120.00, 34.05], [-119.90, 34.10]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Santa Monica Mountains NRA", "agency": "NPS", "type": "National Recreation Area" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-118.75, 34.13], [-118.50, 34.13], [-118.45, 34.08],
+          [-118.50, 34.02], [-118.60, 34.00], [-118.70, 34.02],
+          [-118.80, 34.05], [-118.80, 34.10], [-118.75, 34.13]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Crystal Cove State Park", "agency": "CA State Parks", "type": "State Park" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-117.85, 33.58], [-117.82, 33.58], [-117.82, 33.55],
+          [-117.85, 33.55], [-117.85, 33.58]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Torrey Pines State Natural Reserve", "agency": "CA State Parks", "type": "State Park" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-117.27, 32.94], [-117.23, 32.94], [-117.23, 32.91],
+          [-117.27, 32.91], [-117.27, 32.94]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Point Mugu State Park", "agency": "CA State Parks", "type": "State Park" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-119.10, 34.10], [-119.00, 34.10], [-118.98, 34.05],
+          [-119.02, 34.00], [-119.08, 34.00], [-119.10, 34.05],
+          [-119.10, 34.10]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Morro Bay State Park", "agency": "CA State Parks", "type": "State Park" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-120.87, 35.38], [-120.82, 35.38], [-120.82, 35.34],
+          [-120.87, 35.34], [-120.87, 35.38]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "San Onofre State Beach", "agency": "CA State Parks", "type": "State Beach" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-117.58, 33.40], [-117.53, 33.40], [-117.53, 33.35],
+          [-117.58, 33.35], [-117.58, 33.40]
+        ]]
+      }
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 .dashboard {
   height: 100vh;
   display: grid;
-  grid-template-columns: 280px 1fr 300px;
+  grid-template-columns: 350px 1fr 370px;
   grid-template-rows: 1fr 100px;
   gap: var(--tile-gap);
   padding: var(--tile-gap);
@@ -200,7 +200,6 @@
 .conditions,
 .wildlife-tile,
 .tides-sun,
-.drive-times,
 .seasonal-timeline,
 .sun-tile,
 .water-temps,
@@ -210,8 +209,7 @@
 }
 
 /* Proportional flex: left column */
-.map-tile        { flex: 3; }
-.drive-times     { flex: 1; }
+.map-tile        { flex: 1; }
 
 /* Proportional flex: center column */
 .live-cam        { flex: 3; }
@@ -226,7 +224,7 @@
 /* Responsive */
 @media (max-width: 1200px) {
   .dashboard {
-    grid-template-columns: 260px 1fr 280px;
+    grid-template-columns: 310px 1fr 330px;
   }
 }
 
