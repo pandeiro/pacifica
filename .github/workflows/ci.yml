@@ -96,7 +96,7 @@ jobs:
   build-images:
     runs-on: ubuntu-latest
     needs: validate
-    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
@@ -161,7 +161,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [build-frontend, build-images]
-    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    if: always() && (needs.build-frontend.result == 'success' || needs.build-images.result == 'success')
     environment:
       name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
       url: ${{ github.ref == 'refs/heads/main' && 'https://pch.onl' || 'https://staging.pch.onl' }}
@@ -231,6 +231,7 @@ jobs:
           fi
 
       - name: Health check
+        if: github.ref == 'refs/heads/main'
         env:
           HOST: ${{ secrets.DEPLOY_HOST }}
           USER: ${{ secrets.DEPLOY_USER }}
