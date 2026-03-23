@@ -1,10 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import './WildlifeTile.css';
 import type { TaxonGroup } from '../../types';
 import { useWildlife } from '../../hooks/useWildlife';
 import { useWildlifeAggregation } from '../../hooks/useWildlifeAggregation';
 import type { AggregatedSpecies, SortMode } from '../../hooks/useWildlifeAggregation';
+import { useSpeciesSpotlight } from '../../hooks/useSpeciesSpotlight';
+import { SpeciesSpotlightView } from './SpeciesSpotlightView';
 import { getSpeciesEmoji } from '../../utils/speciesEmoji';
+
+type ViewMode = 'feed' | 'spotlight';
+const VIEW_MODE_KEY = 'wildlife-view-mode';
 
 const SOURCE_BADGES: Record<string, { label: string; color: string }> = {
   inaturalist: { label: 'iNat', color: 'badge--green' },
@@ -28,6 +33,14 @@ export function WildlifeTile() {
   const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortMode>('count');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_MODE_KEY);
+      return saved === 'spotlight' ? 'spotlight' : 'feed';
+    } catch {
+      return 'feed';
+    }
+  });
   const filterRef = useRef<HTMLDivElement>(null);
 
   const rawSightings = sightings?.sightings ?? [];
@@ -38,6 +51,24 @@ export function WildlifeTile() {
     selectedSources,
     sortBy,
   });
+
+  // Spotlight view: filter by source + search only (ignores taxon filter)
+  const spotlightSightings = useMemo(() => {
+    return rawSightings.filter((s) => {
+      if (selectedSources.size > 0 && !selectedSources.has(s.source)) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return (
+          s.species.toLowerCase().includes(q) ||
+          (s.location_name?.toLowerCase().includes(q) ?? false) ||
+          s.source.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [rawSightings, selectedSources, searchQuery]);
+
+  const spotlightGroups = useSpeciesSpotlight(spotlightSightings);
 
   const { timeBlocks } = aggregation;
   const hasResults = timeBlocks.length > 0;
@@ -80,6 +111,15 @@ export function WildlifeTile() {
     setSelectedSources(new Set());
   };
 
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+    } catch {
+      // localStorage unavailable
+    }
+  };
+
   const activeFilterCount =
     (selectedSources.size > 0 ? 1 : 0) +
     (searchQuery ? 1 : 0) +
@@ -92,6 +132,21 @@ export function WildlifeTile() {
           <span className="tile__title-icon">🔍</span>
           Wildlife
         </div>
+        <div className="wildlife-tile__header-right">
+          <div className="wildlife-tile__view-toggle">
+            <button
+              className={`wildlife-tile__toggle-btn ${viewMode === 'feed' ? 'wildlife-tile__toggle-btn--active' : ''}`}
+              onClick={() => handleViewModeChange('feed')}
+            >
+              Feed
+            </button>
+            <button
+              className={`wildlife-tile__toggle-btn ${viewMode === 'spotlight' ? 'wildlife-tile__toggle-btn--active' : ''}`}
+              onClick={() => handleViewModeChange('spotlight')}
+            >
+              Spotlight
+            </button>
+          </div>
         <button
           className={`wildlife-tile__gear ${filterOpen ? 'wildlife-tile__gear--active' : ''}`}
           onClick={() => setFilterOpen((v) => !v)}
@@ -107,6 +162,7 @@ export function WildlifeTile() {
             <span className="wildlife-tile__gear-badge">{activeFilterCount}</span>
           )}
         </button>
+        </div>
       </div>
 
       <div className="tile__content">
@@ -214,7 +270,7 @@ export function WildlifeTile() {
         )}
 
         {/* Aggregated sightings, grouped by recency */}
-        {!isLoading && !error && hasResults && (
+        {!isLoading && !error && hasResults && viewMode === 'feed' && (
           <div className="sightings-container">
             {timeBlocks.map((block) => (
               <div key={block.label} className="sightings-group">
@@ -231,6 +287,14 @@ export function WildlifeTile() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Species Spotlight view */}
+        {!isLoading && !error && viewMode === 'spotlight' && (
+          <SpeciesSpotlightView
+            groups={spotlightGroups}
+            onSourceClick={toggleSourceFilter}
+          />
         )}
       </div>
     </div>

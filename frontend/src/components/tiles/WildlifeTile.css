@@ -12,6 +12,43 @@
 
 /* ── Header: gear button ─────────────────────────────────────────────── */
 
+.wildlife-tile__header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.wildlife-tile__view-toggle {
+  display: flex;
+  background: rgba(10, 22, 40, 0.5);
+  border: 1px solid rgba(65, 184, 220, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.wildlife-tile__toggle-btn {
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.wildlife-tile__toggle-btn:hover {
+  color: var(--teal-glow);
+  background: rgba(65, 184, 220, 0.08);
+}
+
+.wildlife-tile__toggle-btn--active {
+  color: var(--teal-glow);
+  background: rgba(65, 184, 220, 0.15);
+}
+
 .wildlife-tile__gear {
   display: flex;
   align-items: center;

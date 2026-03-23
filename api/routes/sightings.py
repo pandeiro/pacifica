@@ -68,6 +68,13 @@ CANONICAL_SPECIES = {
     "garibaldi": "Garibaldi",
     "mola mola": "Mola Mola",
     "sunfish": "Sunfish",
+    # Invertebrates
+    "octopus": "Octopus",
+    "california lilliput octopus": "Octopus",
+    "two-spot octopus": "Octopus",
+    # Marine Mammals
+    "sea otter": "Sea Otter",
+    "otter": "Sea Otter",
 }
 
 
