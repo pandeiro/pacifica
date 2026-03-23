@@ -14,8 +14,17 @@ const categoryEmoji: Record<string, string> = {
   tidal: '🌊',
 };
 
-function isActiveInMonth(event: SeasonalEvent, month: number): boolean {
-  // Events spanning year boundary (e.g., lobster: Oct 10 → Mar 15)
+function buildTooltip(event: SeasonalEvent): string {
+  const parts: string[] = [];
+  if (event.description) parts.push(event.description);
+  if (event.conditions_text) parts.push(`⚡ ${event.conditions_text}`);
+  if (event.locations.length > 0) {
+    parts.push(`📍 ${event.locations.map(l => l.name).join(', ')}`);
+  }
+  return parts.join('\n') || event.name;
+}
+
+function isActiveInMonth(event: SeasonalEvent, month: number): boolean {  // Events spanning year boundary (e.g., lobster: Oct 10 → Mar 15)
   if (event.typical_start_month > event.typical_end_month) {
     return month >= (event.typical_start_month - 1) || month <= (event.typical_end_month - 1);
   }
@@ -81,7 +90,7 @@ export function SeasonalTimelineTile() {
                     key={event.id}
                     className={`timeline-event timeline-event--${event.category} ${isActiveInMonth(event, currentMonth) ? 'timeline-event--active' : ''}`}
                     style={getEventStyle(event)}
-                    title={event.description ?? event.name}
+                    title={buildTooltip(event)}
                   >
                     {categoryEmoji[event.category] ?? '📋'} {event.name}
                   </div>

@@ -101,6 +101,24 @@ docker compose exec api alembic revision --autogenerate -m "describe your change
 make migrate
 ```
 
+#### Migration Best Practices
+
+- **Never hardcode row IDs** in seed migrations. Tables with `SERIAL` primary keys get unpredictable IDs, especially if rows have been inserted/deleted. Always use subqueries to look up by slug:
+  ```sql
+  -- Bad: hardcoded IDs break if table state differs
+  INSERT INTO seasonal_event_locations (event_id, location_id) VALUES (1, 24);
+
+  -- Good: look up by slug, works regardless of ID sequence
+  INSERT INTO seasonal_event_locations (event_id, location_id)
+  SELECT e.id, l.id FROM seasonal_events e, locations l
+  WHERE e.slug = 'gray-whale-south' AND l.slug = 'point_vicente'
+  ON CONFLICT DO NOTHING;
+  ```
+- **One SQL statement per `op.execute()` call.** The asyncpg driver cannot handle multiple statements in a single prepared statement. Split every UPDATE/INSERT into its own call.
+- **Use `op.create_table()` / `op.add_column()`** (Alembic native operations) instead of raw SQL for DDL — they handle dialect differences.
+- **Location slugs are stable identifiers.** Use them (not IDs) as references across migrations and seed data. Valid location slugs can be found with `SELECT slug FROM locations;`.
+- **Check DB constraints** before writing seed data. Valid values for `location_type`, `region`, `category`, etc. are enforced by CHECK constraints — query them with `SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE conname LIKE 'table_name_%';`
+
 ### Screenshot Capture
 Use `tools/screenshot.py` to capture full-page screenshots of the dashboard for UI verification:
 

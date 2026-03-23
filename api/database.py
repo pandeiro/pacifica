@@ -169,6 +169,8 @@ class SeasonalEvent(Base):
     typical_end_day = Column(Integer, nullable=False)
     species = Column(Text)
     category = Column(Text, nullable=False)
+    conditions_type = Column(Text)
+    conditions_text = Column(Text)
     meta = Column("metadata", JSONB, nullable=False, server_default=text("'{}'"))
 
 

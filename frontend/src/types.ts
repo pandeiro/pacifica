@@ -64,6 +64,12 @@ export interface DriveTime {
   distance?: string;
 }
 
+export interface EventLocation {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export interface SeasonalEvent {
   id: number;
   name: string;
@@ -75,6 +81,9 @@ export interface SeasonalEvent {
   typical_end_day: number;
   species: string | null;
   category: 'migration' | 'spawning' | 'bloom' | 'season' | 'breeding' | 'tidal';
+  conditions_type: string | null;
+  conditions_text: string | null;
+  locations: EventLocation[];
 }
 
 export interface LiveCam {
