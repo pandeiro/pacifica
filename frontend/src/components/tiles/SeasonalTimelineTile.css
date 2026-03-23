@@ -89,6 +89,10 @@
   overflow: visible;
 }
 
+.timeline-event--active {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 12px rgba(255, 255, 255, 0.15);
+}
+
 .timeline-event--migration {
   background: rgba(0, 212, 170, 0.25);
   color: var(--glow-cyan);
@@ -156,3 +160,13 @@
 .timeline-legend__dot--bloom { background: var(--glow-purple); }
 .timeline-legend__dot--season { background: var(--glow-coral); }
 .timeline-legend__dot--breeding { background: #ff9f43; }
+
+.timeline-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

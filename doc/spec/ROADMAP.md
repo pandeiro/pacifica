@@ -59,8 +59,8 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 - [x] **Card 33: Live Cam Frontend Tile** — fetches from API, renders YouTube/iframe embeds, syncs global location selector on cam switch; Drive Times moved to left column
 
 ## 8. Slice G — Seasonal Timeline
-- [ ] **Card 34: Seasonal Events Seed Data**
-- [ ] **Card 35: Seasonal Timeline Frontend Tile**
+- [x] **Card 34: Seasonal Events Seed Data** — 16 SoCal coastal events via Alembic migration (gray whales, blue whales, humpbacks, grunion, lobster, bioluminescence, garibaldi, sea turtles, elephant seals, sea lions, dolphins, leopard sharks, tidepools, sea bass, halibut)
+- [x] **Card 35: Seasonal Timeline Frontend Tile** — GET /api/seasonal-events endpoint, SeasonalEvent model, tile fetches from API with year-wrap handling and active-event glow
 
 ## 9. Slice H — LLM Extraction
 - [ ] **Card 36: LLM Extraction Schemas**

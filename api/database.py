@@ -154,6 +154,24 @@ class LiveCam(Base):
     sort_order = Column(Integer, nullable=False, server_default=text("0"))
 
 
+class SeasonalEvent(Base):
+    """Seasonal coastal event model (migrations, spawning, blooms, etc.)."""
+
+    __tablename__ = "seasonal_events"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, nullable=False)
+    slug = Column(Text, nullable=False, unique=True)
+    description = Column(Text)
+    typical_start_month = Column(Integer, nullable=False)
+    typical_start_day = Column(Integer, nullable=False)
+    typical_end_month = Column(Integer, nullable=False)
+    typical_end_day = Column(Integer, nullable=False)
+    species = Column(Text)
+    category = Column(Text, nullable=False)
+    meta = Column("metadata", JSONB, nullable=False, server_default=text("'{}'"))
+
+
 class ScrapeLog(Base):
     """Scraper execution audit log model."""
 

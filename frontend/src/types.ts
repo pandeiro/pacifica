@@ -65,12 +65,16 @@ export interface DriveTime {
 }
 
 export interface SeasonalEvent {
+  id: number;
   name: string;
-  emoji: string;
-  startMonth: number;
-  endMonth: number;
+  slug: string;
+  description: string | null;
+  typical_start_month: number;
+  typical_start_day: number;
+  typical_end_month: number;
+  typical_end_day: number;
+  species: string | null;
   category: 'migration' | 'spawning' | 'bloom' | 'season' | 'breeding' | 'tidal';
-  isActive: boolean;
 }
 
 export interface LiveCam {

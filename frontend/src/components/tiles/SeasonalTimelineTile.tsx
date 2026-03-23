@@ -1,93 +1,109 @@
 import './SeasonalTimelineTile.css';
+import { useSeasonalEvents } from '../../hooks/useSeasonalEvents';
 import type { SeasonalEvent } from '../../types';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const currentMonth = new Date().getMonth();
 
-const seasonalEvents: SeasonalEvent[] = [
-  { name: '🐋 Gray Whales S', emoji: '🐋', startMonth: 0, endMonth: 2, category: 'migration', isActive: currentMonth <= 2 },
-  { name: '🐋 Gray Whales N', emoji: '🐋', startMonth: 2, endMonth: 4, category: 'migration', isActive: currentMonth >= 2 && currentMonth <= 4 },
-  { name: '🐋 Blue Whales', emoji: '🐋', startMonth: 5, endMonth: 10, category: 'migration', isActive: currentMonth >= 5 && currentMonth <= 10 },
-  { name: '🐟 Grunion', emoji: '🐟', startMonth: 3, endMonth: 8, category: 'spawning', isActive: currentMonth >= 3 && currentMonth <= 8 },
-  { name: '🫞 Lobster Season', emoji: '🫞', startMonth: 9, endMonth: 11, category: 'season', isActive: currentMonth >= 9 || currentMonth <= 2 },
-  { name: '✨ Bioluminescence', emoji: '✨', startMonth: 3, endMonth: 5, category: 'bloom', isActive: currentMonth >= 3 && currentMonth <= 5 },
-];
+const categoryEmoji: Record<string, string> = {
+  migration: '🐋',
+  spawning: '🐟',
+  bloom: '✨',
+  season: '🦞',
+  breeding: '🐣',
+  tidal: '🌊',
+};
+
+function isActiveInMonth(event: SeasonalEvent, month: number): boolean {
+  // Events spanning year boundary (e.g., lobster: Oct 10 → Mar 15)
+  if (event.typical_start_month > event.typical_end_month) {
+    return month >= (event.typical_start_month - 1) || month <= (event.typical_end_month - 1);
+  }
+  return month >= (event.typical_start_month - 1) && month <= (event.typical_end_month - 1);
+}
 
 export function SeasonalTimelineTile() {
+  const { events, isLoading, error } = useSeasonalEvents();
+
   const getEventStyle = (event: SeasonalEvent) => {
-    const left = (event.startMonth / 12) * 100;
-    const width = ((event.endMonth - event.startMonth + 1) / 12) * 100;
-    return {
-      left: `${left}%`,
-      width: `${width}%`,
-    };
+    const startMonth = event.typical_start_month - 1; // 0-indexed
+    const endMonth = event.typical_end_month - 1;
+    const left = (startMonth / 12) * 100;
+
+    // Handle year-wrap events (e.g., lobster: month 10 → 3)
+    const width = startMonth <= endMonth
+      ? ((endMonth - startMonth + 1) / 12) * 100
+      : ((12 - startMonth + endMonth + 1) / 12) * 100;
+
+    return { left: `${left}%`, width: `${width}%` };
   };
 
   const currentMarkerPosition = ((currentMonth + 0.5) / 12) * 100;
+
+  // Legend categories present in the data
+  const categories = [...new Set(events.map(e => e.category))].sort();
 
   return (
     <div className="tile seasonal-timeline">
       <div className="tile__header">
         <div className="tile__title">
           <span className="tile__title-icon">📅</span>
-          Seasonal Timeline
+          Seasonal
         </div>
       </div>
-      
+
       <div className="tile__content">
-        <div className="timeline-container">
-          <div className="timeline-track">
-            <div className="timeline-months">
-              {months.map((month, i) => (
-                <div 
-                  key={month} 
-                  className={`timeline-month ${i === currentMonth ? 'timeline-month--current' : ''}`}
-                >
-                  {month}
+        {isLoading && (
+          <div className="timeline-loading">Loading events…</div>
+        )}
+
+        {error && !isLoading && (
+          <div className="timeline-loading">Events unavailable</div>
+        )}
+
+        {!isLoading && !error && (
+          <div className="timeline-container">
+            <div className="timeline-track">
+              <div className="timeline-months">
+                {months.map((month, i) => (
+                  <div
+                    key={month}
+                    className={`timeline-month ${i === currentMonth ? 'timeline-month--current' : ''}`}
+                  >
+                    {month}
+                  </div>
+                ))}
+              </div>
+
+              <div className="timeline-events">
+                {events.map((event) => (
+                  <div
+                    key={event.id}
+                    className={`timeline-event timeline-event--${event.category} ${isActiveInMonth(event, currentMonth) ? 'timeline-event--active' : ''}`}
+                    style={getEventStyle(event)}
+                    title={event.description ?? event.name}
+                  >
+                    {categoryEmoji[event.category] ?? '📋'} {event.name}
+                  </div>
+                ))}
+              </div>
+
+              <div
+                className="timeline-current-marker"
+                style={{ left: `${currentMarkerPosition}%` }}
+              />
+            </div>
+
+            <div className="timeline-legend">
+              {categories.map(cat => (
+                <div key={cat} className="timeline-legend__item">
+                  <div className={`timeline-legend__dot timeline-legend__dot--${cat}`} />
+                  <span>{cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
                 </div>
               ))}
             </div>
-            
-            <div className="timeline-events">
-              {seasonalEvents.map((event) => (
-                <div
-                  key={event.name}
-                  className={`timeline-event timeline-event--${event.category}`}
-                  style={{
-                    ...getEventStyle(event),
-                  }}
-                  title={event.name}
-                >
-                  {event.name}
-                </div>
-              ))}
-            </div>
-            
-            <div 
-              className="timeline-current-marker"
-              style={{ left: `${currentMarkerPosition}%` }}
-            />
           </div>
-          
-          <div className="timeline-legend">
-            <div className="timeline-legend__item">
-              <div className="timeline-legend__dot timeline-legend__dot--migration" />
-              <span>Migration</span>
-            </div>
-            <div className="timeline-legend__item">
-              <div className="timeline-legend__dot timeline-legend__dot--spawning" />
-              <span>Spawning</span>
-            </div>
-            <div className="timeline-legend__item">
-              <div className="timeline-legend__dot timeline-legend__dot--bloom" />
-              <span>Bloom</span>
-            </div>
-            <div className="timeline-legend__item">
-              <div className="timeline-legend__dot timeline-legend__dot--season" />
-              <span>Season</span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ from routes.sun_events import router as sun_events_router
 from routes.sightings import router as sightings_router
 from routes.scrapers import router as scrapers_router
 from routes.live_cams import router as live_cams_router
+from routes.seasonal_events import router as seasonal_events_router
 
 # Configure logging on startup
 configure_logging()
@@ -68,6 +69,7 @@ app.include_router(sun_events_router)
 app.include_router(sightings_router)
 app.include_router(scrapers_router)
 app.include_router(live_cams_router)
+app.include_router(seasonal_events_router)
 
 
 @app.get("/api/health")

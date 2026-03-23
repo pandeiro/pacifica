@@ -86,7 +86,7 @@ Before starting any work, run through `KICKOFF.md` to:
 - **API (Production)**: https://api.pch.onl
 - **API (Dev)**: http://localhost:4900
 - **Staging**: https://staging.pch.onl
-- **Local Dev**: Frontend runs on http://localhost:5173 (Vite dev server), API on http://localhost:4900
+- **Local Dev**: Frontend runs on http://localhost:4901, API on http://localhost:4900
 
 ## Tools
 
