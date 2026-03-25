@@ -78,6 +78,12 @@ class TestINatScraper:
             },
             "quality_grade": "research",
             "count": 5,
+            "photos": [
+                {
+                    "id": 999,
+                    "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/999/square.jpg",
+                }
+            ],
         }
 
         mock_session = MagicMock()
@@ -86,7 +92,9 @@ class TestINatScraper:
             "inaturalist.find_nearest_location",
             AsyncMock(return_value=(1, None)),
         ):
-            result = await scraper._parse_observation(mock_obs, mock_session)
+            result = await scraper._parse_observation(
+                mock_obs, mock_session, date(2026, 3, 20)
+            )
 
         assert result is not None
         assert result["species"] == "Common Dolphin"
@@ -96,6 +104,12 @@ class TestINatScraper:
         assert result["obs_id"] == 12345
         assert result["source"] == "inaturalist"
         assert result["source_url"] == "https://www.inaturalist.org/observations/12345"
+        assert result["obs_url"] == "https://www.inaturalist.org/observations/12345"
+        assert (
+            result["photo_url"]
+            == "https://inaturalist-open-data.s3.amazonaws.com/photos/999/medium.jpg"
+        )
+        assert result["observed_at"] is not None
 
     @pytest.mark.asyncio
     async def test_parse_observation_skips_outside_radius(self):
@@ -116,7 +130,9 @@ class TestINatScraper:
             "inaturalist.find_nearest_location",
             AsyncMock(return_value=(None, None)),
         ):
-            result = await scraper._parse_observation(mock_obs, mock_session)
+            result = await scraper._parse_observation(
+                mock_obs, mock_session, date(2026, 3, 20)
+            )
 
         assert result is None
 
@@ -128,13 +144,15 @@ class TestINatScraper:
         mock_obs = {"id": 12347, "observed_on": "2026-03-15"}
 
         mock_session = MagicMock()
-        result = await scraper._parse_observation(mock_obs, mock_session)
+        result = await scraper._parse_observation(
+            mock_obs, mock_session, date(2026, 3, 15)
+        )
 
         assert result is None
 
     @pytest.mark.asyncio
     async def test_aggregate_groups_by_location_and_species(self):
-        """Test that _aggregate correctly groups observations."""
+        """Test that _aggregate correctly groups observations with enriched metadata."""
         scraper = INatScraper()
 
         observations = [
@@ -142,17 +160,31 @@ class TestINatScraper:
                 "id": 1,
                 "geojson": {"coordinates": [-118.5, 34.0]},
                 "observed_on": "2026-03-20",
+                "time_observed_at": "2026-03-20T09:00:00Z",
                 "taxon": {"preferred_common_name": "Common Dolphin"},
                 "quality_grade": "research",
                 "count": 5,
+                "photos": [
+                    {
+                        "id": 100,
+                        "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/100/square.jpg",
+                    }
+                ],
             },
             {
                 "id": 2,
                 "geojson": {"coordinates": [-118.6, 34.1]},
                 "observed_on": "2026-03-20",
+                "time_observed_at": "2026-03-20T14:30:00Z",
                 "taxon": {"preferred_common_name": "Common Dolphin"},
                 "quality_grade": "needs_id",
                 "count": 3,
+                "photos": [
+                    {
+                        "id": 200,
+                        "url": "https://inaturalist-open-data.s3.amazonaws.com/photos/200/square.jpg",
+                    }
+                ],
             },
         ]
 
@@ -174,6 +206,23 @@ class TestINatScraper:
         assert record["source_url"] is None
         assert record["metadata"]["obs_count"] == 2
         assert record["metadata"]["obs_ids"] == [1, 2]
+
+        # Enriched metadata
+        obs_list = record["metadata"]["observations"]
+        assert len(obs_list) == 2
+        # Sorted by observed_at descending (most recent first)
+        assert obs_list[0]["obs_id"] == 2
+        assert obs_list[0]["url"] == "https://www.inaturalist.org/observations/2"
+        assert (
+            obs_list[0]["photo_url"]
+            == "https://inaturalist-open-data.s3.amazonaws.com/photos/200/medium.jpg"
+        )
+        assert obs_list[1]["obs_id"] == 1
+        # Top-level photo_url from the most recent observation
+        assert (
+            record["metadata"]["photo_url"]
+            == "https://inaturalist-open-data.s3.amazonaws.com/photos/200/medium.jpg"
+        )
 
     @pytest.mark.asyncio
     async def test_aggregate_different_species_different_rows(self):
@@ -225,6 +274,73 @@ class TestINatScraper:
 
                 result = await scraper.scrape()
                 assert isinstance(result, list)
+
+    @pytest.mark.asyncio
+    async def test_aggregate_no_photo_has_null(self):
+        """Test that observations without photos result in null photo_url."""
+        scraper = INatScraper()
+
+        observations = [
+            {
+                "id": 50,
+                "geojson": {"coordinates": [-118.5, 34.0]},
+                "observed_on": "2026-03-20",
+                "time_observed_at": "2026-03-20T10:00:00Z",
+                "taxon": {"preferred_common_name": "Sea Star"},
+                "quality_grade": "needs_id",
+                "count": 1,
+            },
+        ]
+
+        mock_session = MagicMock()
+
+        with patch(
+            "inaturalist.find_nearest_location",
+            AsyncMock(return_value=(1, None)),
+        ):
+            records = await scraper._aggregate(observations, date(2026, 3, 20))
+
+        assert len(records) == 1
+        assert records[0]["metadata"]["photo_url"] is None
+        assert records[0]["metadata"]["observations"][0]["photo_url"] is None
+
+    @pytest.mark.asyncio
+    async def test_aggregate_caps_at_five_observations(self):
+        """Test that metadata.observations is capped at 5 most recent."""
+        scraper = INatScraper()
+
+        observations = [
+            {
+                "id": i,
+                "geojson": {"coordinates": [-118.5, 34.0]},
+                "observed_on": "2026-03-20",
+                # UTC hours 8-14 all fall on 2026-03-20 in Pacific (UTC-8)
+                "time_observed_at": f"2026-03-20T{i + 7:02d}:00:00Z",
+                "taxon": {"preferred_common_name": "Common Dolphin"},
+                "quality_grade": "research",
+                "count": 1,
+            }
+            for i in range(1, 8)  # 7 observations
+        ]
+
+        mock_session = MagicMock()
+
+        with patch(
+            "inaturalist.find_nearest_location",
+            AsyncMock(return_value=(1, None)),
+        ):
+            records = await scraper._aggregate(observations, date(2026, 3, 20))
+
+        assert len(records) == 1
+        meta = records[0]["metadata"]
+        # All 7 obs_ids preserved
+        assert meta["obs_count"] == 7
+        assert len(meta["obs_ids"]) == 7
+        # But only 5 most recent in observations array
+        assert len(meta["observations"]) == 5
+        # Most recent first (id 7 at hour 14, then 6, 5, 4, 3)
+        obs_ids_in_order = [o["obs_id"] for o in meta["observations"]]
+        assert obs_ids_in_order == [7, 6, 5, 4, 3]
 
 
 class TestINatTaxonIDs:

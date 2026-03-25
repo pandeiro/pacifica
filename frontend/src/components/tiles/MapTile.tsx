@@ -4,10 +4,12 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './MapTile.css';
 import { useLocations } from '../../hooks/useLocations';
 import type { Location } from '../../hooks/useLocations';
+import type { SightingRecord } from '../../types';
 
 interface MapTileProps {
   locationId?: number;
   onLocationChange?: (locationId: number) => void;
+  sightings?: SightingRecord[];
 }
 
 const MAP_STYLES: Record<string, { url: string; label: string }> = {
@@ -48,6 +50,86 @@ const TYPE_COLORS: Record<string, string> = {
 
 function getTypeColor(type: string): string {
   return TYPE_COLORS[type] || '#00d4aa';
+}
+
+function formatPopupTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('en-US', {
+      timeZone: 'America/Los_Angeles',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function inatSightingsToGeoJSON(
+  sightings: SightingRecord[],
+  locations: Location[],
+): GeoJSON.FeatureCollection {
+  const locMap = new Map(locations.map((l) => [l.id, l]));
+  const inat = sightings.filter((s) => s.source === 'inaturalist');
+
+  // Group by location_id, collect species and metadata
+  const byLocation = new Map<number, { species: string[]; photoUrl: string | null; obsCount: number; obsLinks: { url: string; photo_url: string | null; observed_at: string }[] }>();
+
+  for (const s of inat) {
+    if (!s.location_id) continue;
+    const loc = locMap.get(s.location_id);
+    if (!loc) continue;
+
+    if (!byLocation.has(s.location_id)) {
+      byLocation.set(s.location_id, { species: [], photoUrl: null, obsCount: 0, obsLinks: [] });
+    }
+    const entry = byLocation.get(s.location_id)!;
+    if (!entry.species.includes(s.species)) {
+      entry.species.push(s.species);
+    }
+
+    const meta = s.metadata;
+    if (!entry.photoUrl && typeof meta.photo_url === 'string') {
+      entry.photoUrl = meta.photo_url;
+    }
+    if (typeof meta.obs_count === 'number') {
+      entry.obsCount += meta.obs_count;
+    }
+    const rawObs = meta.observations;
+    if (Array.isArray(rawObs)) {
+      for (const o of rawObs) {
+        if (typeof o === 'object' && o !== null && 'url' in o) {
+          entry.obsLinks.push({
+            url: String(o.url),
+            photo_url: typeof o.photo_url === 'string' ? o.photo_url : null,
+            observed_at: String(o.observed_at ?? ''),
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    type: 'FeatureCollection',
+    features: Array.from(byLocation.entries()).map(([locId, data]) => {
+      const loc = locMap.get(locId)!;
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [loc.lng, loc.lat] },
+        properties: {
+          location_id: locId,
+          location_name: loc.name,
+          species_list: data.species.join(', '),
+          photo_url: data.photoUrl,
+          obs_count: data.obsCount,
+          obs_links_json: JSON.stringify(data.obsLinks.slice(0, 5)),
+        },
+      };
+    }),
+  };
 }
 
 function locationsToGeoJSON(locations: Location[]): GeoJSON.FeatureCollection {
@@ -121,7 +203,7 @@ async function fetchPublicLands(bbox: number[]): Promise<GeoJSON.FeatureCollecti
   }
 }
 
-export function MapTile({ locationId, onLocationChange }: MapTileProps) {
+export function MapTile({ locationId, onLocationChange, sightings = [] }: MapTileProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
@@ -129,11 +211,14 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
   const mountedRef = useRef(true);
   const locationsRef = useRef<Location[]>([]);
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const sightingsRef = useRef<SightingRecord[]>([]);
   const { locations } = useLocations();
   const [currentStyle, setCurrentStyle] = useState('dark');
+  const [showInat, setShowInat] = useState(false);
 
-  // Keep ref in sync so callbacks always see current locations
+  // Keep ref in sync so callbacks always see current data
   locationsRef.current = locations;
+  sightingsRef.current = sightings;
 
   const handleMapClick = useCallback(
     (e: maplibregl.MapMouseEvent & { features?: GeoJSON.Feature[] }) => {
@@ -352,6 +437,67 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
         if (popupRef.current) popupRef.current.remove();
       });
     });
+
+    // iNaturalist observations layer
+    const inatGeoJSON = inatSightingsToGeoJSON(sightingsRef.current, locationsRef.current);
+    map.addSource('inat-observations', { type: 'geojson', data: inatGeoJSON });
+
+    map.addLayer({
+      id: 'inat-dots',
+      type: 'circle',
+      source: 'inat-observations',
+      layout: {
+        visibility: 'none',
+      },
+      paint: {
+        'circle-radius': 5,
+        'circle-color': '#7bc67e',
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': 'rgba(255,255,255,0.7)',
+        'circle-opacity': 0.9,
+      },
+    });
+
+    // Click popup for iNat observations
+    map.on('click', 'inat-dots', (e) => {
+      if (!e.features?.length) return;
+      const props = e.features[0].properties;
+      if (!props) return;
+
+      let linksHtml = '';
+      try {
+        const links = JSON.parse(props.obs_links_json || '[]') as { url: string; photo_url: string | null; observed_at: string }[];
+        linksHtml = links.map((l) => {
+          const time = formatPopupTime(l.observed_at);
+          return `<a href="${l.url}" target="_blank" rel="noopener" class="inat-popup__link">Observation · ${time} →</a>`;
+        }).join('');
+      } catch { /* ignore parse errors */ }
+
+      const photoHtml = props.photo_url
+        ? `<img src="${props.photo_url}" class="inat-popup__photo" alt="${props.species_list}" />`
+        : '';
+
+      if (popupRef.current) popupRef.current.remove();
+      popupRef.current = new maplibregl.Popup({ offset: 12, maxWidth: '280px', className: 'inat-popup' })
+        .setLngLat(e.lngLat)
+        .setHTML(
+          `<div class="inat-popup__inner">
+            ${photoHtml}
+            <div class="inat-popup__species">${props.species_list}</div>
+            <div class="inat-popup__count">${props.obs_count} observation${props.obs_count !== '1' ? 's' : ''} at ${props.location_name}</div>
+            <div class="inat-popup__links">${linksHtml}</div>
+          </div>`,
+        )
+        .addTo(map);
+    });
+
+    // Hover cursor change for iNat dots
+    map.on('mousemove', 'inat-dots', () => {
+      map.getCanvas().style.cursor = 'pointer';
+    });
+    map.on('mouseleave', 'inat-dots', () => {
+      map.getCanvas().style.cursor = '';
+    });
   }, [handleMapClick, handleMapHover]);
 
   // Initialize map
@@ -495,6 +641,31 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
     }
   }, [locationId, locations]);
 
+  // Toggle iNat layer visibility
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current) return;
+    try {
+      map.setLayoutProperty('inat-dots', 'visibility', showInat ? 'visible' : 'none');
+    } catch {
+      // Layer may not exist yet
+    }
+  }, [showInat]);
+
+  // Update iNat data when sightings change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !styleLoadedRef.current) return;
+    try {
+      const source = map.getSource('inat-observations') as maplibregl.GeoJSONSource;
+      if (source) {
+        source.setData(inatSightingsToGeoJSON(sightings, locations));
+      }
+    } catch {
+      // Source may not exist yet
+    }
+  }, [sightings, locations]);
+
   return (
     <div className="tile map-tile">
       <div className="tile__header">
@@ -502,17 +673,26 @@ export function MapTile({ locationId, onLocationChange }: MapTileProps) {
           <span className="tile__title-icon">🗺️</span>
           Coastal Map
         </div>
-        <div className="map-tile__styles">
-          {Object.entries(MAP_STYLES).map(([key, { label }]) => (
-            <button
-              key={key}
-              className={`map-tile__style-btn${key === currentStyle ? ' map-tile__style-btn--active' : ''}`}
-              onClick={() => handleStyleSwitch(key)}
-              title={`Switch to ${label} style`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="map-tile__header-right">
+          <button
+            className={`map-tile__layer-btn${showInat ? ' map-tile__layer-btn--active' : ''}`}
+            onClick={() => setShowInat((v) => !v)}
+            title="Toggle iNaturalist observations"
+          >
+            iNat
+          </button>
+          <div className="map-tile__styles">
+            {Object.entries(MAP_STYLES).map(([key, { label }]) => (
+              <button
+                key={key}
+                className={`map-tile__style-btn${key === currentStyle ? ' map-tile__style-btn--active' : ''}`}
+                onClick={() => handleStyleSwitch(key)}
+                title={`Switch to ${label} style`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <div className="map-tile__container" ref={mapContainer} />

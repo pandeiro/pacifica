@@ -340,8 +340,51 @@ function SpeciesRow({
               ))}
             </div>
           )}
+          {sp.inatLinks.length > 0 && (
+            <div className="species-row__inat-links">
+              {sp.inatLinks.map((obs) => (
+                <a
+                  key={obs.obs_id}
+                  href={obs.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="species-row__inat-thumb-link"
+                  title={`${sp.species} — ${formatObservedAt(obs.observed_at)}`}
+                >
+                  {obs.photo_url ? (
+                    <img
+                      src={obs.photo_url}
+                      alt={sp.species}
+                      className="species-row__inat-thumb"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="species-row__inat-thumb species-row__inat-thumb--fallback">
+                      🔗
+                    </span>
+                  )}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function formatObservedAt(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('en-US', {
+      timeZone: 'America/Los_Angeles',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return iso;
+  }
 }

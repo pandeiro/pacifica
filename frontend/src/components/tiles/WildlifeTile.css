@@ -428,3 +428,43 @@
   border-color: rgb(158, 158, 158);
   color: rgb(158, 158, 158);
 }
+
+/* ── iNaturalist observation thumbnails ───────────────────────────────── */
+
+.species-row__inat-links {
+  display: flex;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.species-row__inat-thumb-link {
+  display: inline-flex;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.species-row__inat-thumb-link:hover {
+  transform: scale(1.2);
+}
+
+.species-row__inat-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(123, 198, 126, 0.4);
+  transition: border-color 0.15s ease;
+}
+
+.species-row__inat-thumb-link:hover .species-row__inat-thumb {
+  border-color: #7bc67e;
+}
+
+.species-row__inat-thumb--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  background: rgba(123, 198, 126, 0.1);
+  border-color: rgba(123, 198, 126, 0.25);
+}

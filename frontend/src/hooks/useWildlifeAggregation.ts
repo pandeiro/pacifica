@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { SightingRecord, TaxonGroup } from '../types';
+import type { SightingRecord, TaxonGroup, InatObservation } from '../types';
 
 // --- Types ---
 
@@ -14,6 +14,8 @@ export interface AggregatedSpecies {
   sources: string[];
   sightingDates: string[]; // distinct dates this species appeared
   latestDate: string | null; // most recent sighting_date for this species
+  inatLinks: InatObservation[]; // up to 5 most recent iNat observations
+  inatPhotoUrl: string | null; // best available photo from iNat observations
 }
 
 export interface TimeBlock {
@@ -122,6 +124,24 @@ export function useWildlifeAggregation(
             ? sightingDates.sort((a, b) => b.localeCompare(a))[0]
             : null;
 
+          // Extract iNat observation links from metadata
+          let inatLinks: InatObservation[] = [];
+          let inatPhotoUrl: string | null = null;
+          const inatSighting = sightings.find((s) => s.source === 'inaturalist');
+          if (inatSighting) {
+            const meta = inatSighting.metadata;
+            const rawObs = meta.observations;
+            if (Array.isArray(rawObs)) {
+              inatLinks = rawObs.filter(
+                (o): o is InatObservation =>
+                  typeof o === 'object' && o !== null && 'obs_id' in o && 'url' in o,
+              );
+            }
+            if (typeof meta.photo_url === 'string') {
+              inatPhotoUrl = meta.photo_url;
+            }
+          }
+
           return {
             species: representative.species,
             taxonGroup: representative.taxon_group,
@@ -131,6 +151,8 @@ export function useWildlifeAggregation(
             sources,
             sightingDates,
             latestDate,
+            inatLinks,
+            inatPhotoUrl,
           };
         })
         .sort((a, b) => {

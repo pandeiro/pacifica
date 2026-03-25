@@ -34,6 +34,14 @@ export interface SightingRecord {
   metadata: Record<string, unknown>;
 }
 
+export interface InatObservation {
+  obs_id: number;
+  url: string;
+  photo_url: string | null;
+  observed_at: string;
+  confidence: string;
+}
+
 // Legacy type (deprecated, kept for backward compatibility)
 export interface Sighting {
   id: string;

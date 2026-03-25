@@ -154,6 +154,7 @@ class INatScraper(BaseScraper):
             lambda: {
                 "count": 0,
                 "obs_ids": [],
+                "obs_details": [],
                 "confidence_counts": {"high": 0, "medium": 0, "low": 0},
             }
         )
@@ -169,7 +170,17 @@ class INatScraper(BaseScraper):
                 b["count"] += result.get("count") or 1
                 b["obs_ids"].append(result.get("obs_id"))
                 b["confidence_counts"][result.get("confidence", "medium")] += 1
+                b["obs_details"].append(
+                    {
+                        "obs_id": result["obs_id"],
+                        "url": result["obs_url"],
+                        "photo_url": result.get("photo_url"),
+                        "observed_at": result["observed_at"],
+                        "confidence": result["confidence"],
+                    }
+                )
 
+        MAX_INAT_LINKS = 5
         now_ts = datetime.now(timezone.utc)
         records = []
         for (loc_id, species), b in buckets.items():
@@ -177,10 +188,26 @@ class INatScraper(BaseScraper):
             medium = b["confidence_counts"]["medium"]
             confidence = "high" if high > medium else "medium" if medium > 0 else "low"
 
+            # Sort observations by time descending, keep top 5
+            sorted_obs = sorted(
+                b["obs_details"],
+                key=lambda o: o["observed_at"],
+                reverse=True,
+            )[:MAX_INAT_LINKS]
+
+            # Pick the best available photo from the top observations
+            top_photo_url = None
+            for o in sorted_obs:
+                if o.get("photo_url"):
+                    top_photo_url = o["photo_url"]
+                    break
+
             meta = {
                 "obs_ids": b["obs_ids"],
                 "obs_count": len(b["obs_ids"]),
                 "confidence_breakdown": b["confidence_counts"],
+                "photo_url": top_photo_url,
+                "observations": sorted_obs,
             }
 
             records.append(
@@ -255,6 +282,18 @@ class INatScraper(BaseScraper):
         source_url = (
             f"https://www.inaturalist.org/observations/{obs_id}" if obs_id else None
         )
+
+        # Extract primary photo (medium size for display)
+        photo_url = None
+        photos = obs.get("photos", [])
+        if photos:
+            square_url = photos[0].get("url", "")
+            if square_url:
+                photo_url = square_url.replace("/square.", "/medium.")
+
+        # Format observed_at as ISO with Pacific offset
+        observed_at_pacific = ts.astimezone(pacific).isoformat()
+
         metadata = {}
         if place_guess:
             metadata["place_guess"] = place_guess
@@ -273,6 +312,9 @@ class INatScraper(BaseScraper):
             "confidence": confidence,
             "metadata": metadata,
             "obs_id": obs_id,
+            "obs_url": source_url,
+            "photo_url": photo_url,
+            "observed_at": observed_at_pacific,
         }
 
 
