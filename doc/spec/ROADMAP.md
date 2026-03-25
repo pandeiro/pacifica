@@ -35,23 +35,21 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 - [x] **Card 23a: LLM Client Infrastructure** — `scraper/llm.py`, Ollama/OpenAI-compat wrapper, env vars; prerequisite for 18b, 19, 23
 - [x] **Card 18: iNaturalist Scraper** — REST API, 30-min schedule, haversine location resolution
 - [x] **Card 18b: ACS-LA Gray Whale Census Scraper** — HTML + Facebook feed widget, regex extraction for TODAY counts, seasonal (Dec–May)
-- [ ] **Card 18c: Whale Alert Scraper** — BLOCKED: whale-alert.io is crypto service; whalealert.org requires data access agreement (contact info@whalealert.org)
+- [ ] **Card 18c: Whale Alert Scraper** — RETIRED: whale-alert.io is crypto service; whalealert.org requires data access agreement
 - [x] **Card 19: Harbor Breeze Scraper** — Playwright headless, JetEngine dynamic content, Long Beach
 - [x] **Card 21: Dana Wharf Scraper** — Public Google Sheet CSV export, regex parse, daily
 - [x] **Card 22: Island Packers Scraper** — Public Google Sheet CSV export, structured daily counts
 - [x] **Card 20: Davey's Locker Scraper** — Plain HTML table, regex parse, daily
-- [ ] **Card 23: Nitter/Twitter Scrapers** — Research accounts first; NITTER_API_URL env var, LLM extraction
-- [ ] **Card 24: Sightings API Endpoint** — `GET /api/sightings`, taxon_group derivation server-side
-- [ ] **Card 25: Wildlife Intelligence Frontend Tile** — Filter pills, source badges, 15-min poll, type updates
+- [ ] **Card 23: Nitter/Twitter Scrapers** — RETIRED: replaced by Card 37 (News Feed)
+- [x] **Card 24: Sightings API Endpoint** — `GET /api/sightings`, taxon_group derivation server-side
+- [x] **Card 25: Wildlife Intelligence Frontend Tile** — Filter pills, source badges, 15-min poll, type updates
 
 ## 5. Slice D — Activity Scores
-- [ ] **Card 26: Activity Score Worker**
-- [ ] **Card 27: Activity Scores API Endpoint**
-- [ ] **Card 28: Activity Scores Frontend Tile**
+- [ ] **Card 26-28: Activity Scores** — RETIRED: no longer in scope
 
 ## 6. Slice E — Map
-- [ ] **Card 29: Locations Seed Data**
-- [ ] **Card 30: Map Frontend Tile**
+- [x] **Card 29: Locations Seed Data**
+- [x] **Card 30: Map Frontend Tile**
 - [ ] **Card 31: Drive Times (Google Maps)**
 
 ## 7. Slice F — Live Cams
@@ -63,4 +61,7 @@ This roadmap tracks the vertical slices of the Pacifica dashboard. Each slice is
 - [x] **Card 35: Seasonal Timeline Frontend Tile** — GET /api/seasonal-events endpoint, SeasonalEvent model, tile fetches from API with year-wrap handling and active-event glow
 
 ## 9. Slice H — LLM Extraction
-- [ ] **Card 36: LLM Extraction Schemas**
+- [x] **Card 36: LLM Extraction Schemas** — LLMClient with profile-based extraction, model auto-discovery, fallback handling; comprehensive prompt engineering docs
+
+## 10. Slice I — News Feed
+- [ ] **Card 37: News Feed Aggregator** — Aggregates coastal news from multiple sources (Twitter/X, Reddit, RSS feeds, local news APIs); replaces Card 23 (Nitter/Twitter Scrapers)
