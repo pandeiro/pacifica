@@ -1,99 +1,53 @@
 .dashboard {
   height: 100vh;
   display: grid;
-  grid-template-columns: 350px 1fr 370px;
-  grid-template-rows: 1fr 100px;
+  grid-template-columns: 350px 1fr 320px;
+  grid-template-rows: 3fr 2fr 100px;
   gap: var(--tile-gap);
   padding: var(--tile-gap);
   overflow: hidden;
-  background: var(--abyss);
+  position: relative;
+  background:
+    url('/coastal-bg.jpg') center 40% / cover no-repeat fixed;
 }
 
-/* Main content area - left map + center + right columns */
-.dashboard__main {
-  display: contents;
+.dashboard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 15, 30, 0.2) 0%,
+    rgba(10, 15, 30, 0.05) 40%,
+    rgba(10, 15, 30, 0.2) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* Left column: map + drive times stacked */
-.dashboard__left {
-  grid-column: 1;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--tile-gap);
-  min-height: 0;
-  min-width: 0;
+.dashboard > * {
+  position: relative;
+  z-index: 1;
 }
 
-/* Center column */
-.dashboard__center {
-  grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--tile-gap);
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-}
+/* Grid placement for direct children:
+   ┌──────────┬──────────────┬──────────────┐
+   │          │  LiveCam     │  Conditions  │
+   │  Map     ├──────────────┴──────────────┤
+   │  (full   │  Wildlife (spans center+right)│
+   │  height) │              │              │
+   ├──────────┴──────────────┴──────────────┤
+   │  Seasonal Timeline (full width)        │
+   └────────────────────────────────────────┘
+*/
+.map-tile        { grid-column: 1; grid-row: 1 / 3; }
+.live-cam        { grid-column: 2; grid-row: 1; }
+.conditions-tile { grid-column: 3; grid-row: 1; }
+.wildlife-tile   { grid-column: 2 / 4; grid-row: 2; }
+.dashboard__timeline { grid-column: 1 / -1; grid-row: 3; }
 
-/* Right column */
-.dashboard__right {
-  grid-column: 3;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--tile-gap);
-  min-height: 0;
-}
-
-/* Location Selector */
-.dashboard__location-selector {
-  flex-shrink: 0;
-}
-
-.location-selector__dropdown {
-  width: 100%;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius);
-  color: var(--text-primary);
-  font-family: var(--font-display);
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 0.625rem 2.25rem 0.625rem 1rem;
-  cursor: pointer;
-  backdrop-filter: blur(12px);
-  box-shadow: 
-    0 4px 24px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 var(--glass-highlight);
-  transition: all var(--transition-fast);
-}
-
-.location-selector__dropdown:hover {
-  border-color: var(--teal-glow);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 var(--glass-highlight);
-}
-
-.location-selector__dropdown:focus {
-  outline: none;
-  border-color: var(--glow-cyan);
-  box-shadow: 
-    0 0 0 2px rgba(0, 212, 170, 0.2),
-    inset 0 1px 0 var(--glass-highlight);
-}
-
-.location-selector__dropdown:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Timeline at bottom spanning all columns */
+/* Timeline */
 .dashboard__timeline {
-  grid-column: 1 / -1;
-  grid-row: 2;
   min-height: 0;
   position: relative;
   overflow: visible;
@@ -106,19 +60,19 @@
   border-radius: var(--border-radius);
   padding: var(--tile-padding);
   backdrop-filter: blur(12px);
-  box-shadow: 
+  box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 var(--glass-highlight);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: box-shadow var(--transition-fast);
   flex: 1;
   min-height: 0;
 }
 
 .tile:hover {
-  box-shadow: 
+  box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 var(--glass-highlight);
 }
@@ -206,27 +160,15 @@
 .sun-tile,
 .water-temps,
 .visibility,
-.tides-tile {
+.tides-tile,
+.conditions-tile {
   min-height: unset;
 }
-
-/* Proportional flex: left column */
-.map-tile        { flex: 1; }
-
-/* Proportional flex: center column */
-.live-cam        { flex: 3; }
-.wildlife-tile   { flex: 2; }
-
-/* Proportional flex: right column */
-.sun-tile        { flex: 1; }
-.water-temps     { flex: 2; }
-.visibility      { flex: 1; }
-.tides-tile      { flex: 3; }
 
 /* Responsive */
 @media (max-width: 1200px) {
   .dashboard {
-    grid-template-columns: 310px 1fr 330px;
+    grid-template-columns: 310px 1fr 280px;
   }
 }
 
@@ -239,40 +181,24 @@
     min-height: 100vh;
     -webkit-overflow-scrolling: touch;
     padding: var(--tile-gap) 0 0;
-  }
-  
-  .dashboard__main {
-    display: flex;
-    flex-direction: column;
-    gap: var(--tile-gap);
-    min-width: 0;
-    overflow: hidden;
-  }
-  
-  .dashboard__left,
-  .dashboard__center,
-  .dashboard__right,
-  .dashboard__timeline {
-    grid-column: auto;
-    grid-row: auto;
-    min-width: 0;
-    max-width: 100%;
+    background-attachment: scroll;
   }
 
-  .dashboard__left {
-    flex: none;
+  .dashboard::before {
+    background-attachment: scroll;
   }
 
-  .dashboard__left .map-tile {
+  .map-tile        { grid-column: 1; grid-row: auto; }
+  .live-cam        { grid-column: 1; grid-row: auto; }
+  .wildlife-tile   { grid-column: 1; grid-row: auto; }
+  .conditions-tile { grid-column: 1; grid-row: auto; }
+  .dashboard__timeline { grid-column: 1; grid-row: auto; }
+
+  .dashboard .map-tile {
     height: 400px;
     flex: none;
   }
-  
-  .dashboard__center,
-  .dashboard__right {
-    flex: none;
-  }
-  
+
   .tile {
     flex: none;
   }

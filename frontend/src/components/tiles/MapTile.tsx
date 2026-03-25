@@ -674,6 +674,16 @@ export function MapTile({ locationId, onLocationChange, sightings = [] }: MapTil
           Coastal Map
         </div>
         <div className="map-tile__header-right">
+          <select
+            className="map-tile__location-select"
+            value={locationId ?? ''}
+            onChange={(e) => onLocationChange?.(Number(e.target.value))}
+          >
+            <option value="" disabled>Location</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>{loc.name}</option>
+            ))}
+          </select>
           <button
             className={`map-tile__layer-btn${showInat ? ' map-tile__layer-btn--active' : ''}`}
             onClick={() => setShowInat((v) => !v)}

@@ -77,13 +77,41 @@
 
 .map-tile__style-btn:hover {
   color: var(--text-primary);
-  border-color: var(--accent-teal);
+  border-color: var(--teal-glow);
 }
 
 .map-tile__style-btn--active {
-  background: rgba(0, 212, 170, 0.15);
-  border-color: var(--accent-teal);
-  color: var(--accent-teal);
+  background: rgba(58, 125, 158, 0.15);
+  border-color: var(--teal-glow);
+  color: var(--teal-glow);
+}
+
+/* Location select dropdown */
+.map-tile__location-select {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 2px 20px 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ab0c4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  max-width: 140px;
+}
+
+.map-tile__location-select:hover {
+  border-color: var(--teal-glow);
+}
+
+.map-tile__location-select:focus {
+  outline: none;
+  border-color: var(--glow-cyan);
+  box-shadow: 0 0 0 2px rgba(245, 200, 66, 0.2);
 }
 
 /* Compass control — dark theme override */

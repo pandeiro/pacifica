@@ -368,34 +368,15 @@ class ACSLAScraper(BaseScraper):
                 "metadata": metadata,
             }
 
-        if counts["southbound"] > 0:
+        gray_metadata = {
+            "southbound": counts["southbound"],
+            "northbound": counts["northbound"],
+            "cow_calf_south": counts["cow_calves_south"],
+        }
+        gray_total = sum(gray_metadata.values())
+        if gray_total > 0:
             sightings.append(
-                make_record(
-                    "Gray Whale (southbound)",
-                    counts["southbound"],
-                    "high",
-                    {"direction": "southbound"},
-                )
-            )
-
-        if counts["northbound"] > 0:
-            sightings.append(
-                make_record(
-                    "Gray Whale (northbound)",
-                    counts["northbound"],
-                    "high",
-                    {"direction": "northbound"},
-                )
-            )
-
-        if counts["cow_calves_south"] > 0:
-            sightings.append(
-                make_record(
-                    "Gray Whale (cow/calf)",
-                    counts["cow_calves_south"],
-                    "high",
-                    {"direction": "southbound", "type": "cow_calf"},
-                )
+                make_record("Gray Whale", gray_total, "high", gray_metadata)
             )
 
         for species, count in llm_sightings.items():

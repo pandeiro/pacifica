@@ -1,5 +1,5 @@
 .live-cam {
-  min-height: 200px;
+  min-height: 320px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -14,7 +14,7 @@
   opacity: 0.7;
 }
 
-/* Video container fills available flex space */
+/* Video container fills available flex space, maintains 16:9 min */
 .live-cam__video-container {
   flex: 1;
   min-height: 0;
@@ -121,5 +121,5 @@
 .live-cam__dropdown:focus {
   outline: none;
   border-color: var(--glow-cyan);
-  box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.2);
+  box-shadow: 0 0 0 2px rgba(245, 200, 66, 0.2);
 }

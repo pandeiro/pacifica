@@ -16,10 +16,6 @@ function formatTime(isoString: string): string {
   }).toLowerCase();
 }
 
-/**
- * Cosine interpolation between two tide events.
- * Tides follow a sinusoidal pattern between high and low points.
- */
 function interpolateTideHeight(
   time: number,
   event1: { timestamp: string; height: number; type: string },
@@ -31,15 +27,10 @@ function interpolateTideHeight(
   if (time <= t1) return event1.height;
   if (time >= t2) return event2.height;
   
-  // Normalized time between 0 and 1
   const t = (time - t1) / (t2 - t1);
-  
-  // Cosine interpolation for smooth tide curve
-  // Using cosine to create the characteristic tide curve shape
   const h1 = event1.height;
   const h2 = event2.height;
   
-  // Cosine interpolation: h1 + (h2 - h1) * (1 - cos(π * t)) / 2
   return h1 + (h2 - h1) * (1 - Math.cos(Math.PI * t)) / 2;
 }
 
@@ -47,10 +38,9 @@ export function TidesTile({ locationId }: TidesTileProps) {
   const { tides, isLoading, error } = useTides(locationId);
   const [hoverPos, setHoverPos] = useState<{ x: number; time: number; height: number } | null>(null);
   
-  const width = 300;
+  const width = 280;
   const height = 80;
   
-  // Generate sorted graph data
   const graphData = useMemo(() => {
     if (!tides?.events) return [];
     return tides.events
@@ -62,7 +52,19 @@ export function TidesTile({ locationId }: TidesTileProps) {
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }, [tides]);
   
-  // Calculate scales for the graph
+  // Find next high and next low from events
+  const { nextHigh, nextLow } = useMemo(() => {
+    if (!tides?.events) return { nextHigh: null, nextLow: null };
+    const now = new Date().getTime();
+    const future = tides.events
+      .filter(e => new Date(e.timestamp).getTime() > now)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    return {
+      nextHigh: future.find(e => e.type === 'high') || null,
+      nextLow: future.find(e => e.type === 'low') || null,
+    };
+  }, [tides]);
+
   const { minHeight, startTime, endTime, timeRange, heightRange } = useMemo(() => {
     if (graphData.length === 0) {
       return { minHeight: 0, startTime: 0, endTime: 1, timeRange: 1, heightRange: 1 };
@@ -81,19 +83,17 @@ export function TidesTile({ locationId }: TidesTileProps) {
     };
   }, [graphData]);
   
-  // Generate interpolated curve path using cosine interpolation
   const curvePath = useMemo(() => {
     if (graphData.length < 2) return '';
     
-    const numPoints = 100; // Number of points for smooth curve
+    const numPoints = 100;
     let path = '';
     
     for (let i = 0; i <= numPoints; i++) {
       const t = i / numPoints;
       const time = startTime + t * timeRange;
       
-      // Find which segment this time falls into
-      let interpolatedHeight: number;
+      let interpolatedHeight: number | undefined;
       for (let j = 0; j < graphData.length - 1; j++) {
         const t1 = new Date(graphData[j].timestamp).getTime();
         const t2 = new Date(graphData[j + 1].timestamp).getTime();
@@ -118,7 +118,6 @@ export function TidesTile({ locationId }: TidesTileProps) {
     return path;
   }, [graphData, startTime, timeRange, minHeight, heightRange]);
   
-  // Calculate current position on the curve
   const currentPos = useMemo(() => {
     if (!tides?.current_height_ft || graphData.length === 0) return null;
     
@@ -132,19 +131,15 @@ export function TidesTile({ locationId }: TidesTileProps) {
     return { x, y };
   }, [tides, graphData, startTime, endTime, timeRange, minHeight, heightRange]);
   
-  // Handle mouse move for hover
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (graphData.length < 2) return;
     
     const rect = e.currentTarget.getBoundingClientRect();
     const pixelX = e.clientX - rect.left;
-    
-    // Map pixel x to viewBox coordinate so hover matches the curve
     const viewBoxX = (pixelX / rect.width) * width;
     const t = viewBoxX / width;
     const time = startTime + t * timeRange;
     
-    // Find which segment and interpolate
     let interpolatedHeight = graphData[0].height;
     for (let j = 0; j < graphData.length - 1; j++) {
       const t1 = new Date(graphData[j].timestamp).getTime();
@@ -166,10 +161,10 @@ export function TidesTile({ locationId }: TidesTileProps) {
     return (
       <div className="tile tides-tile" data-testid="tides-tile">
         <div className="tile__header">
-          <div className="tile__title">Next Tides</div>
+          <div className="tile__title">Next Tide</div>
         </div>
         <div className="tile__content" data-testid="tile-loading">
-          <div className="loading-state">Loading tide data...</div>
+          <div className="loading-state">Loading...</div>
         </div>
       </div>
     );
@@ -179,7 +174,7 @@ export function TidesTile({ locationId }: TidesTileProps) {
     return (
       <div className="tile tides-tile tile--error" data-testid="tides-tile">
         <div className="tile__header">
-          <div className="tile__title">Next Tides</div>
+          <div className="tile__title">Next Tide</div>
         </div>
         <div className="tile__content" data-testid="tile-error">
           <div className="error-state">Tide data unavailable</div>
@@ -191,91 +186,88 @@ export function TidesTile({ locationId }: TidesTileProps) {
   return (
     <div className="tile tides-tile" data-testid="tides-tile">
       <div className="tile__header">
-        <div className="tile__title">Next Tides</div>
+        <div className="tile__title">Next Tide</div>
+        {tides?.station_info && (
+          <div className="tile__subtitle tides-tile__station">
+            {tides.station_info.name}
+          </div>
+        )}
       </div>
-      {tides?.station_info && (
-        <div className="tile__subtitle">
-          {tides.station_info.name} ({tides.station_info.distance_miles} mi {tides.station_info.direction})
-        </div>
-      )}
 
       <div className="tile__content">
-        <div className="tides-tile__display">
-          {tides?.next_tide && (
-            <div className={`tides-tile__time-block tides-tile__${tides.next_tide.type}`}>
-              <span className="tides-tile__time" data-testid="next-tide">
+        <div className="tides-tile__body">
+          <div className="tides-tile__info">
+            {tides?.next_tide && (
+              <div className="tides-tile__big-time" data-testid="next-tide">
                 {formatTime(tides.next_tide.timestamp)}
-              </span>
-              <span className="tides-tile__label">
-                {tides.next_tide.type === 'low' ? 'Low' : 'High'} {tides.next_tide.height_ft.toFixed(1)}ft
-              </span>
-            </div>
-          )}
-          
-          <div className="tides-tile__arrow">→</div>
-          
-          {tides?.next_tide_after && (
-            <div className={`tides-tile__time-block tides-tile__${tides.next_tide_after.type}`}>
-              <span className="tides-tile__time" data-testid="next-tide-after">
-                {formatTime(tides.next_tide_after.timestamp)}
-              </span>
-              <span className="tides-tile__label">
-                {tides.next_tide_after.type === 'low' ? 'Low' : 'High'} {tides.next_tide_after.height_ft.toFixed(1)}ft
-              </span>
-            </div>
-          )}
-        </div>
-        
-        {graphData.length > 0 && (
-          <div className="tides-tile__chart-container">
-            <div 
-              className="tide-curve" 
-              data-testid="tides-curve"
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
-            >
-              <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-                {curvePath && (
-                  <>
-                    <path className="tide-curve__path" d={curvePath} fill="none" />
-                    {currentPos && (
-                      <line
-                        className="tide-curve__now-line"
-                        x1={currentPos.x}
-                        y1="0"
-                        x2={currentPos.x}
-                        y2={height}
-                      />
-                    )}
-                    {/* Hover line */}
-                    {hoverPos && (
-                      <>
-                        <line
-                          className="tide-curve__hover-line"
-                          x1={hoverPos.x}
-                          y1="0"
-                          x2={hoverPos.x}
-                          y2={height}
-                        />
-                        <circle
-                          className="tide-curve__hover-point"
-                          cx={hoverPos.x}
-                          cy={height - ((hoverPos.height - minHeight) / heightRange * (height - 20) + 10)}
-                          r="3"
-                        />
-                      </>
-                    )}
-                  </>
-                )}
-              </svg>
-            </div>
-            {hoverPos && (
-              <div className="tides-tile__hover-info">
-                {formatTime(new Date(hoverPos.time).toISOString())} — {hoverPos.height.toFixed(1)}ft
+              </div>
+            )}
+            
+            {nextHigh && (
+              <div className="tides-tile__event tides-tile__high">
+                <span className="tides-tile__event-label">High</span>
+                <span className="tides-tile__event-value">+{nextHigh.height_ft.toFixed(1)} ft</span>
+              </div>
+            )}
+            
+            {nextLow && (
+              <div className="tides-tile__event tides-tile__low">
+                <span className="tides-tile__event-label">Low</span>
+                <span className="tides-tile__event-value">{nextLow.height_ft.toFixed(1)} ft</span>
               </div>
             )}
           </div>
-        )}
+          
+          {graphData.length > 0 && (
+            <div className="tides-tile__curve-container">
+              <div 
+                className="tide-curve" 
+                data-testid="tides-curve"
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+              >
+                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+                  {curvePath && (
+                    <>
+                      <path className="tide-curve__path" d={curvePath} fill="none" />
+                      {currentPos && (
+                        <line
+                          className="tide-curve__now-line"
+                          x1={currentPos.x}
+                          y1="0"
+                          x2={currentPos.x}
+                          y2={height}
+                        />
+                      )}
+                      {hoverPos && (
+                        <>
+                          <line
+                            className="tide-curve__hover-line"
+                            x1={hoverPos.x}
+                            y1="0"
+                            x2={hoverPos.x}
+                            y2={height}
+                          />
+                          <circle
+                            className="tide-curve__hover-point"
+                            cx={hoverPos.x}
+                            cy={height - ((hoverPos.height - minHeight) / heightRange * (height - 20) + 10)}
+                            r="3"
+                          />
+                        </>
+                      )}
+                    </>
+                  )}
+                </svg>
+              </div>
+              {hoverPos && (
+                <div className="tides-tile__hover-info">
+                  {formatTime(new Date(hoverPos.time).toISOString())} &mdash; {hoverPos.height.toFixed(1)}ft
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

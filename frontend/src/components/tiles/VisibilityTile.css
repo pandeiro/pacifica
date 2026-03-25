@@ -28,12 +28,12 @@
 .visibility__divider {
   width: 1px;
   height: 40px;
-  background: var(--color-border, rgba(255, 255, 255, 0.2));
+  background: var(--glass-border);
 }
 
 .visibility__label {
   font-size: 0.7rem;
-  color: var(--color-text-tertiary, #888);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -47,30 +47,31 @@
 .visibility__number {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--color-text-primary, #fff);
+  color: var(--text-primary);
   line-height: 1;
 }
 
 .visibility__unit {
   font-size: 0.75rem;
-  color: var(--color-text-secondary, #aaa);
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .visibility__no-value {
   font-size: 1.5rem;
-  color: var(--color-text-tertiary, #666);
+  color: var(--text-muted);
 }
 
 .visibility__source {
-  font-size: 0.65rem;
-  color: var(--color-text-tertiary, #666);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-muted);
   margin-top: 8px;
   text-align: center;
 }
 
 .visibility__no-data {
-  color: var(--color-text-tertiary, #666);
+  color: var(--text-muted);
   font-size: 0.875rem;
   text-align: center;
   padding: 8px 0;
@@ -89,9 +90,22 @@
 }
 
 .visibility__chart rect {
+  fill: var(--ocean-mid);
   transition: opacity 0.2s ease;
 }
 
 .visibility__chart rect:hover {
   opacity: 1 !important;
+  fill: var(--ocean-shallow);
+}
+
+.loading-state,
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }

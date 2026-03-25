@@ -34,7 +34,7 @@ function VisibilityChart({ history }: { history: VisibilityResponse['history'] }
           y1={CHART_HEIGHT - getBarHeight(Y_MIN)}
           x2={chartWidth}
           y2={CHART_HEIGHT - getBarHeight(Y_MIN)}
-          stroke="var(--color-text-muted)"
+          stroke="var(--text-muted)"
           strokeWidth="0.5"
           strokeDasharray="2,2"
         />
@@ -47,7 +47,7 @@ function VisibilityChart({ history }: { history: VisibilityResponse['history'] }
               y={CHART_HEIGHT - barHeight}
               width={barWidth}
               height={barHeight}
-              fill="var(--color-ocean)"
+              fill="var(--ocean-mid)"
               opacity={0.6 + (i / history.length) * 0.4}
             />
           );
