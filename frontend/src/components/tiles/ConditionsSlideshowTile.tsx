@@ -217,7 +217,6 @@ function TidesPage({ locationId }: { locationId: number }) {
         break;
       }
     }
-    const drawHeight = height - padY * 2;
     const x = t * width;
     setHoverPos({ x, time, height: interpolatedHeight });
   }, [graphData, startTime, timeRange, width, height, padY]);
