@@ -17,14 +17,19 @@ const categoryEmoji: Record<string, string> = {
   tidal: '🌊',
 };
 
-function getEventStyle(event: SeasonalEvent) {
+function getEventSegments(event: SeasonalEvent): Array<{ left: string; width: string }> {
   const startMonth = event.typical_start_month - 1;
   const endMonth = event.typical_end_month - 1;
-  const left = (startMonth / 12) * 100;
-  const width = startMonth <= endMonth
-    ? ((endMonth - startMonth + 1) / 12) * 100
-    : ((12 - startMonth + endMonth + 1) / 12) * 100;
-  return { left: `${left}%`, width: `${width}%` };
+
+  if (startMonth <= endMonth) {
+    return [{ left: `${(startMonth / 12) * 100}%`, width: `${((endMonth - startMonth + 1) / 12) * 100}%` }];
+  }
+
+  // Wrapping event: split into two segments
+  return [
+    { left: `${(startMonth / 12) * 100}%`, width: `${((12 - startMonth) / 12) * 100}%` },
+    { left: '0%', width: `${((endMonth + 1) / 12) * 100}%` },
+  ];
 }
 
 function isActiveInMonth(event: SeasonalEvent, month: number): boolean {
@@ -66,21 +71,26 @@ export function SeasonalTimelineTile() {
         <div className="seasonal-timeline__bars">
           {isLoading && <div className="seasonal-timeline__empty">Loading…</div>}
           {error && !isLoading && <div className="seasonal-timeline__empty">Unavailable</div>}
-          {!isLoading && !error && events.map((event, idx) => {
+          {!isLoading && !error && events.flatMap((event, idx) => {
             const row = idx % 6;
-            return (
+            const segments = getEventSegments(event);
+            const isActive = isActiveInMonth(event, currentMonth);
+            return segments.map((seg, sIdx) => (
               <div
-                key={event.id}
-                className={`seasonal-timeline__bar seasonal-timeline__bar--${event.category} ${isActiveInMonth(event, currentMonth) ? 'seasonal-timeline__bar--active' : ''}`}
+                key={`${event.id}-${sIdx}`}
+                className={`seasonal-timeline__bar seasonal-timeline__bar--${event.category} ${isActive ? 'seasonal-timeline__bar--active' : ''}`}
                 style={{
-                  ...getEventStyle(event),
+                  left: seg.left,
+                  width: seg.width,
                   '--bar-row': row,
                 } as React.CSSProperties}
                 onClick={() => setSelectedEvent(event)}
               >
-                <span className="seasonal-timeline__bar-label">{event.name}</span>
+                {sIdx === 0 && (
+                  <span className="seasonal-timeline__bar-label">{event.name}</span>
+                )}
               </div>
-            );
+            ));
           })}
         </div>
 
