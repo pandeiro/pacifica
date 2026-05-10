@@ -91,6 +91,9 @@ Before starting any work, run through `KICKOFF.md` to:
 - **Never push** to the remote repository unless explicitly told to do so
 - The user will instruct you when to push (e.g., to trigger CI/CD or share progress)
 
+### Deployment Checks
+When asked to check deployment status (e.g., "Did the deploy succeed?"), **only report status** and diagnose errors. Do not take action (fix, push, etc.) by default - wait for the user to instruct you to fix issues and push.
+
 ## Quick Reference
 
 - **Repository**: https://github.com/pandeiro/pacifica
