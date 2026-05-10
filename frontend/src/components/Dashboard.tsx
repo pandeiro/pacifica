@@ -17,8 +17,11 @@ export function Dashboard() {
   useEffect(() => {
     const img = new Image();
     img.onload = () => setBgLoaded(true);
+    img.onerror = () => setBgLoaded(true);
     img.src = '/coastal-bg.jpg';
-    if (img.complete) setBgLoaded(true);
+    if (img.complete) {
+      setTimeout(() => setBgLoaded(true), 0);
+    }
   }, []);
 
   return (
