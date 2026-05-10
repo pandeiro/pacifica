@@ -64,6 +64,18 @@ Production server access via SSH:
 ssh mu@ottertime.com
 ```
 
+## Repository Process
+
+### Commit Guidelines
+- **Never force push** without explicit permission from the user
+- If a commit needs correction after push, create a new commit rather than amending
+- Use clear, concise commit messages describing what changed and why
+
+### Branching Strategy
+- Work directly on `main` for small changes
+- Create feature branches for work requiring multiple commits or PRs
+- Rebase rather than merge when updating feature branches
+
 ## Workflow
 
 ### Before Starting Work
