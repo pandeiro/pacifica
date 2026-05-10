@@ -28,6 +28,13 @@
 .dashboard > * {
   position: relative;
   z-index: 1;
+  opacity: 0;
+  transition: opacity 0.8s ease-in;
+  transition-delay: 2s;
+}
+
+.dashboard.dashboard--loaded > * {
+  opacity: 1;
 }
 
 /* Grid placement for direct children:

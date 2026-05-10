@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './Dashboard.css';
 import { MapTile } from './tiles/MapTile';
 import { LiveCamTile } from './tiles/LiveCamTile';
@@ -7,15 +7,22 @@ import { ConditionsSlideshowTile } from './tiles/ConditionsSlideshowTile';
 import { SeasonalTimelineTile } from './tiles/SeasonalTimelineTile';
 import { useWildlife } from '../hooks/useWildlife';
 
-// Default to Santa Monica (closest to us)
 const DEFAULT_LOCATION_ID = 3;
 
 export function Dashboard() {
   const [locationId, setLocationId] = useState(DEFAULT_LOCATION_ID);
   const { sightings } = useWildlife();
+  const [bgLoaded, setBgLoaded] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setBgLoaded(true);
+    img.src = '/coastal-bg.jpg';
+    if (img.complete) setBgLoaded(true);
+  }, []);
 
   return (
-    <div className="dashboard">
+    <div className={`dashboard${bgLoaded ? ' dashboard--loaded' : ''}`}>
       <MapTile
         locationId={locationId}
         onLocationChange={setLocationId}
